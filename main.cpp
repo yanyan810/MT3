@@ -298,12 +298,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	Vector3 rotate{ 0.0f,0.0f,0.0f };
 	Vector3 translate{ 0.0f,0.0f,0.0f };
-	Vector3 cameraPosition{ 0.0f,0.0f,-0.1000f };
+	Vector3 cameraPosition{ 0.0f,0.0f,-10.000f };
 
 	const Vector3 kLocalVertices[3] = {
-  {0.0f, 1.0f, 5.0f},    // 頂点1
-  {-1.0f, -1.0f, 5.0f},  // 頂点2
-  {1.0f, -1.0f, 5.0f}    // 頂点3
+  {0.0f, 1.0f, 0.0f},    // 頂点1
+  {-1.0f, -1.0f, 0.0f},  // 頂点2
+  {1.0f, -1.0f, 0.0f}    // 頂点3
 	};
 
 
@@ -321,23 +321,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
-		if (keys[DIK_W]) {
-			translate.y -= 0.01f;
-		}
-
-		if (keys[DIK_S]) {
-			translate.y += 0.01f;
-		}
-
-		if (keys[DIK_A]) {
-			translate.x -= 0.01f;
-			rotate.y -= 0.01f;
-		}
-
-		if (keys[DIK_D]) {
-			translate.x += 0.01f;
-			rotate.y += 0.01f;
-		}
+		
 
 		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, rotate, translate);
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
@@ -351,6 +335,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Vector3 ndcVertex = Transform(kLocalVertices[i], worldViewProjectionMatrix);
 			screenVertices[i] = Transform(ndcVertex, viewportMatriix);
 		}
+
+		if (keys[DIK_W]) {
+			translate.z -= 0.1f;
+		}
+
+		if (keys[DIK_S]) {
+			translate.z += 0.1f;
+		}
+
+		if (keys[DIK_A]) {
+			translate.x -= 0.1f;
+
+		}
+
+		if (keys[DIK_D]) {
+			translate.x += 0.1f;
+
+		}
+
+		rotate.y += 0.05f;
 
 		///
 		/// ↑更新処理ここまで
