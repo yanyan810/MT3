@@ -1,6 +1,7 @@
 #include <Novice.h>
 #include <cmath>
 #include <assert.h>
+#include <windows.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -470,6 +471,12 @@ Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
 	return result;
 }
 
+bool IsCollision(const Sphere& s1, const Sphere& s2) {
+	Vector3 diff = VectorSubtract(s1.center, s2.center);
+	float distanceSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+	float radiusSum = s1.radius + s2.radius;
+	return distanceSq <= radiusSum * radiusSum;
+}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -499,8 +506,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	sphere.center = { 0,0,0 };
 	sphere.radius = 1.0f;
 
+	Sphere sphere2;
+	sphere2.center = { 0.1f,0,3 };
+	sphere2.radius = 1.0f;
+
 	Segment segment{ {-2.0f,-1.0f,0.0f},{3.0f,2.0f,2.0f} };
 	Vector3 point{ -1.0f,0.6f,0.6f };
+
+	int sphereColor = WHITE;
+
+	//マウスの座標
+	int mouseX = 0;
+	int mouseY = 0;
+
+	//マウスの前の位置
+	int prevMouseX = 0;
+	int prevMouseY = 0;
+
+	//マウスの位置を中央に
+	SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
+
+	//カメラ移動の速度
+	float speed = 0.1f;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -515,7 +542,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
-		
+
 
 		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, cameraRotate, cameraTranslate);
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
@@ -523,6 +550,64 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kWindowWidth) / float(kWindowHeight), 1.0f, 100.0f);
 		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		Matrix4x4 viewportMatriix = MakeViewportMatrix(0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+
+		//============
+		//マウスの処理
+		//============
+
+		Novice::GetMousePosition(&mouseX, &mouseY);
+
+		//Rキーでマウスの位置をリセット
+		if (keys[DIK_R]) {
+			SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
+		}
+
+		int dx = mouseX - prevMouseX;
+		int dy = mouseY - prevMouseY;
+
+		//押している間移動
+		if (Novice::IsPressMouse(1)|| Novice::IsPressMouse(0)) {
+
+			cameraRotate.y += dx * 0.01f;//左右回転
+			cameraRotate.x += dy * 0.01f;//上下回転
+		}
+
+		prevMouseX = mouseX;
+		prevMouseY = mouseY;
+
+		//===========
+		//カメラ移動
+		//===========
+
+		if (keys[DIK_W]) {
+			cameraTranslate.z -= speed;
+		}
+
+		if (keys[DIK_S]) {
+			cameraTranslate.z += speed;
+		}
+
+		if (keys[DIK_A]) {
+			cameraTranslate.x += speed;
+		}
+
+		if (keys[DIK_D]) {
+			cameraTranslate.x -= speed;
+		}
+
+		if (keys[DIK_UP]) {
+			cameraTranslate.y -= speed;
+		}
+		if (keys[DIK_DOWN]) {
+			cameraTranslate.y += speed;
+		}
+
+		//当たり判定
+		if (IsCollision(sphere, sphere2)) {
+			sphereColor = RED;
+		} else {
+			sphereColor = WHITE;
+		}
 
 		Vector3  project = Project(VectorSubtract(point, segment.origin), segment.diff);
 		Vector3 closestPoint = ClosestPoint(point, segment);
@@ -532,7 +617,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Sphere closestPointSphere{ closestPoint,0.01f };
 
 		Vector3 start = Transform(Transform(segment.origin, worldViewProjectionMatrix), viewportMatriix);
-		Vector3 end = Transform(Transform(VectorAdd(segment.origin,segment.diff), worldViewProjectionMatrix), viewportMatriix);
+		Vector3 end = Transform(Transform(VectorAdd(segment.origin, segment.diff), worldViewProjectionMatrix), viewportMatriix);
 
 		/*Vector3 screenVertices[3];
 		for (uint32_t i = 0; i < 3; i++) {
@@ -573,7 +658,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-		//DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, sphereColor);
+		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatriix, WHITE);
 		DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
 		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
 		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
@@ -584,7 +670,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 		ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
 		ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
-		ImGui::InputFloat3("Project", &project.x, "%.3f",ImGuiInputTextFlags_ReadOnly);
+		ImGui::InputFloat3("Project", &project.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
 		ImGui::End();
 
 		/*Novice::DrawTriangle(
