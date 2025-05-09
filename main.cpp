@@ -31,6 +31,24 @@ struct Sphere {
 	float radius; //!<半径
 };
 
+struct Line {
+	Vector3 origin;//!<始点
+	Vector3 diff;  //<!終点への差分ベクトル
+};
+
+struct Ray {
+
+	Vector3 origin;
+	Vector3 diff;
+};
+
+struct Segment {
+
+	Vector3 origin;
+	Vector3 diff;
+
+};
+
 //1.透視投影行列
 Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspcectRatio, float nearClip, float farClip) {
 	Matrix4x4 result;
@@ -111,6 +129,38 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, f
 
 	return result;
 
+}
+
+//ベクトルの加法
+Vector3 VectorAdd(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+	result.x = v1.x + v2.x;
+	result.y = v1.y + v2.y;
+	result.z = v1.z + v2.z;
+	return result;
+}
+
+//2.行列の減法
+Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result;
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			result.m[i][j] = m1.m[i][j] - m2.m[i][j];
+			result.m[i][j] = m1.m[i][j] - m2.m[i][j];
+			result.m[i][j] = m1.m[i][j] - m2.m[i][j];
+			result.m[i][j] = m1.m[i][j] - m2.m[i][j];
+		}
+	}
+	return result;
+}
+
+//ベクトルの減法
+Vector3 VectorSubtract(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+	result.x = v1.x - v2.x;
+	result.y = v1.y - v2.y;
+	result.z = v1.z - v2.z;
+	return result;
 }
 
 //3.行列の積
@@ -336,7 +386,7 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMa
 
 
 void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
-	const uint32_t kSubdivision = 32;
+	const uint32_t kSubdivision = 8;
 	const float kLatEvery = float(M_PI) / float(kSubdivision);  // π / 32
 	const float kLonEvery = float(M_PI * 2) / float(kSubdivision);  // 2π / 32
 
@@ -377,6 +427,50 @@ void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, con
 	}
 }
 
+Vector3 Project(const Vector3& v1, const Vector3& v2) {
+	float dotVV = v2.x * v2.x + v2.y * v2.y + v2.z * v2.z;
+	float dotPV = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+	float scale = dotPV / dotVV;
+
+	Vector3 result;
+	result.x = v2.x * scale;
+	result.y = v2.y * scale;
+	result.z = v2.z * scale;
+	return result;
+}
+
+Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
+	Vector3 segStart = segment.origin;
+	Vector3 segEnd = {
+		segment.origin.x + segment.diff.x,
+		segment.origin.y + segment.diff.y,
+		segment.origin.z + segment.diff.z
+	};
+
+	Vector3 segDir = VectorSubtract(segEnd, segStart);
+	Vector3 ptToStart = VectorSubtract(point, segStart);
+
+	float segLengthSq =
+		segDir.x * segDir.x +
+		segDir.y * segDir.y +
+		segDir.z * segDir.z;
+
+	float dot = ptToStart.x * segDir.x + ptToStart.y * segDir.y + ptToStart.z * segDir.z;
+	float t = dot / segLengthSq;
+
+	if (t < 0.0f) t = 0.0f;
+	if (t > 1.0f) t = 1.0f;
+
+	Vector3 result = {
+		segStart.x + segDir.x * t,
+		segStart.y + segDir.y * t,
+		segStart.z + segDir.z * t
+	};
+
+	return result;
+}
+
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -405,6 +499,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	sphere.center = { 0,0,0 };
 	sphere.radius = 1.0f;
 
+	Segment segment{ {-2.0f,-1.0f,0.0f},{3.0f,2.0f,2.0f} };
+	Vector3 point{ -1.0f,0.6f,0.6f };
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -426,6 +523,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kWindowWidth) / float(kWindowHeight), 1.0f, 100.0f);
 		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		Matrix4x4 viewportMatriix = MakeViewportMatrix(0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+
+		Vector3  project = Project(VectorSubtract(point, segment.origin), segment.diff);
+		Vector3 closestPoint = ClosestPoint(point, segment);
+
+
+		Sphere pointSphere{ point,0.01f };
+		Sphere closestPointSphere{ closestPoint,0.01f };
+
+		Vector3 start = Transform(Transform(segment.origin, worldViewProjectionMatrix), viewportMatriix);
+		Vector3 end = Transform(Transform(VectorAdd(segment.origin,segment.diff), worldViewProjectionMatrix), viewportMatriix);
 
 		/*Vector3 screenVertices[3];
 		for (uint32_t i = 0; i < 3; i++) {
@@ -466,13 +573,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		//DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
+		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
+
 
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 		ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
 		ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
+		ImGui::InputFloat3("Project", &project.x, "%.3f",ImGuiInputTextFlags_ReadOnly);
 		ImGui::End();
 
 		/*Novice::DrawTriangle(
