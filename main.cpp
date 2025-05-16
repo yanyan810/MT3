@@ -50,6 +50,12 @@ struct Segment {
 
 };
 
+struct Plane {
+	Vector3 normal;//!<法線
+	float distance;//<!距離
+
+};
+
 //1.透視投影行列
 Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspcectRatio, float nearClip, float farClip) {
 	Matrix4x4 result;
@@ -156,7 +162,7 @@ Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2) {
 }
 
 //ベクトルの減法
-Vector3 VectorSubtract(const Vector3& v1, const Vector3& v2) {
+Vector3 Subtract(const Vector3& v1, const Vector3& v2) {
 	Vector3 result;
 	result.x = v1.x - v2.x;
 	result.y = v1.y - v2.y;
@@ -179,6 +185,23 @@ Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
 	}
 	return result;
 }
+
+Vector3 Multiply(const Matrix4x4& m, const Vector3& v) {
+	Vector3 result;
+	result.x = m.m[0][0] * v.x + m.m[0][1] * v.y + m.m[0][2] * v.z + m.m[0][3];
+	result.y = m.m[1][0] * v.x + m.m[1][1] * v.y + m.m[1][2] * v.z + m.m[1][3];
+	result.z = m.m[2][0] * v.x + m.m[2][1] * v.y + m.m[2][2] * v.z + m.m[2][3];
+	return result;
+}
+
+Vector3 Multiply(float distance, const Vector3 v2) {
+	Vector3 result;
+	result.x = distance * v2.x;
+	result.y = distance * v2.y;
+	result.z = distance * v2.z;
+	return result;
+}
+
 //4.逆行列
 Matrix4x4 inverse(const Matrix4x4& m) {
 
@@ -324,7 +347,18 @@ Vector3 Cross(const Vector3& v1, const Vector3& v2) {
 }
 
 
-
+//正規化
+Vector3 Normalize(const Vector3& vector) {
+	Vector3 result;
+	float length = sqrtf(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+	if (length == 0.0f) {
+		return { 0.0f, 0.0f, 0.0f };
+	}
+	result.x = vector.x / length;
+	result.y = vector.y / length;
+	result.z = vector.z / length;
+	return result;
+}
 
 void MatrixScreenPrintf(int x, int y, const Matrix4x4& m, const char* label) {
 	Novice::ScreenPrintf(x, y + 20, "%s", label);
@@ -448,8 +482,8 @@ Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
 		segment.origin.z + segment.diff.z
 	};
 
-	Vector3 segDir = VectorSubtract(segEnd, segStart);
-	Vector3 ptToStart = VectorSubtract(point, segStart);
+	Vector3 segDir = Subtract(segEnd, segStart);
+	Vector3 ptToStart = Subtract(point, segStart);
 
 	float segLengthSq =
 		segDir.x * segDir.x +
@@ -471,11 +505,58 @@ Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
 	return result;
 }
 
+Vector3 Perpendicular(const Vector3& vector) {
+	if (vector.x != 0.0f || vector.y != 0.0f) {
+		return { -vector.y, vector.x, 0.0f };
+	}
+	return { 0.0f, -vector.z, vector.y };
+}
+
+//平面の描画
+void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	Vector3 center = Multiply(plane.distance, plane.normal);
+
+	// perpendiculars を作る（元の構成を保つ）
+	Vector3 perpendiculars[4];
+	perpendiculars[0] = Normalize(Perpendicular(plane.normal));
+	perpendiculars[1] = { -perpendiculars[0].x, -perpendiculars[0].y, -perpendiculars[0].z };
+	perpendiculars[2] = Cross(plane.normal, perpendiculars[0]);
+	perpendiculars[3] = { -perpendiculars[2].x, -perpendiculars[2].y, -perpendiculars[2].z };
+
+	// points を順回りで構成（+u+v, -u+v, -u-v, +u-v）
+	Vector3 points[4];
+	points[0] = VectorAdd(center, VectorAdd(Multiply(2.0f, perpendiculars[0]), Multiply(2.0f, perpendiculars[2])));   // +u +v
+	points[1] = VectorAdd(center, VectorAdd(Multiply(-2.0f, perpendiculars[0]), Multiply(2.0f, perpendiculars[2])));  // -u +v
+	points[2] = VectorAdd(center, VectorAdd(Multiply(-2.0f, perpendiculars[0]), Multiply(-2.0f, perpendiculars[2]))); // -u -v
+	points[3] = VectorAdd(center, VectorAdd(Multiply(2.0f, perpendiculars[0]), Multiply(-2.0f, perpendiculars[2])));  // +u -v
+
+	//スクリーン座標へ変換
+	for (int i = 0; i < 4; i++) {
+		points[i] = Transform(Transform(points[i], viewProjectMatrix), viewportMatrix);
+	}
+	// DrawLine で順回りに矩形を描く（元の構造維持）
+	Novice::DrawLine(int(points[0].x), int(points[0].y), int(points[1].x), int(points[1].y), color);
+	Novice::DrawLine(int(points[1].x), int(points[1].y), int(points[2].x), int(points[2].y), color);
+	Novice::DrawLine(int(points[2].x), int(points[2].y), int(points[3].x), int(points[3].y), color);
+	Novice::DrawLine(int(points[3].x), int(points[3].y), int(points[0].x), int(points[0].y), color);
+
+
+
+}
+
 bool IsCollision(const Sphere& s1, const Sphere& s2) {
-	Vector3 diff = VectorSubtract(s1.center, s2.center);
+	Vector3 diff = Subtract(s1.center, s2.center);
 	float distanceSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 	float radiusSum = s1.radius + s2.radius;
 	return distanceSq <= radiusSum * radiusSum;
+}
+
+bool IsCollision(const Sphere& sphere, const Plane& plane) {
+	float dot = sphere.center.x * plane.normal.x +
+		sphere.center.y * plane.normal.y +
+		sphere.center.z * plane.normal.z;
+	float distance = fabsf(dot - plane.distance);  // ← N・P - d
+	return distance <= sphere.radius;
 }
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -515,6 +596,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	int sphereColor = WHITE;
 
+	Plane plane;
+	plane.normal = { 0.0f,1.0f,0.0f };
+	plane.distance = 1.0f;
 	//マウスの座標
 	int mouseX = 0;
 	int mouseY = 0;
@@ -566,12 +650,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		int dy = mouseY - prevMouseY;
 
 		//押している間移動
-		if (Novice::IsPressMouse(1)|| Novice::IsPressMouse(0)) {
+		if (keys[DIK_LSHIFT]) {
+			if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
 
-			cameraRotate.y += dx * 0.01f;//左右回転
-			cameraRotate.x += dy * 0.01f;//上下回転
+				cameraRotate.y += dx * 0.01f;//左右回転
+				cameraRotate.x += dy * 0.01f;//上下回転
+			}
 		}
-
 		prevMouseX = mouseX;
 		prevMouseY = mouseY;
 
@@ -603,13 +688,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 		//当たり判定
-		if (IsCollision(sphere, sphere2)) {
+		/*if (IsCollision(sphere, sphere2)) {
+			sphereColor = RED;
+		} else {
+			sphereColor = WHITE;
+		}*/
+
+		if (IsCollision(sphere, plane)) {
 			sphereColor = RED;
 		} else {
 			sphereColor = WHITE;
 		}
 
-		Vector3  project = Project(VectorSubtract(point, segment.origin), segment.diff);
+		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
 		Vector3 closestPoint = ClosestPoint(point, segment);
 
 
@@ -663,7 +754,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
 		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
 		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
-
+		DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
 
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
@@ -671,7 +762,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
 		ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
 		ImGui::InputFloat3("Project", &project.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+		ImGui::DragFloat3("Plane.Nomal", &plane.normal.x, 0.01f);
+		plane.normal = Normalize(plane.normal);
+		ImGui::DragFloat("distance", &plane.distance, 0.01f);
 		ImGui::End();
+
 
 		/*Novice::DrawTriangle(
 			int(screenVertices[0].x), int(screenVertices[0].y), int(screenVertices[1].x), int(screenVertices[1].y),
