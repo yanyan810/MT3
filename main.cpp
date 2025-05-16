@@ -559,6 +559,43 @@ bool IsCollision(const Sphere& sphere, const Plane& plane) {
 	return distance <= sphere.radius;
 }
 
+bool IsCollision(const Segment& segment, const Plane& plane) {
+	Vector3 segStart = segment.origin;
+	Vector3 segEnd = VectorAdd(segment.origin, segment.diff);
+	Vector3 segDir = Subtract(segEnd, segStart);
+
+	float dot = segDir.x * plane.normal.x + segDir.y * plane.normal.y + segDir.z * plane.normal.z;
+	if (dot == 0.0f) return false; // 平行
+
+	float t = (plane.distance - (segStart.x * plane.normal.x + segStart.y * plane.normal.y + segStart.z * plane.normal.z)) / dot;
+	if (t < 0.0f || t > 1.0f) return false; // 線分の範囲外
+
+	// 交点を求める
+	Vector3 intersection = {
+		segStart.x + segDir.x * t,
+		segStart.y + segDir.y * t,
+		segStart.z + segDir.z * t
+	};
+
+	// 平面の中心位置
+	Vector3 center = Multiply(plane.distance, plane.normal);
+
+	// 平面の座標軸（u, v）
+	Vector3 u = Normalize(Perpendicular(plane.normal));
+	Vector3 v = Normalize(Cross(plane.normal, u));
+
+	// 中心→交点 のベクトルを作る
+	Vector3 local = Subtract(intersection, center);
+
+	// u, v 方向の成分を内積で求める
+	float uDist = local.x * u.x + local.y * u.y + local.z * u.z;
+	float vDist = local.x * v.x + local.y * v.y + local.z * v.z;
+
+	// 範囲内かどうか（ここでは矩形サイズが±2）
+	float halfSize = 2.0f;
+	return fabsf(uDist) <= halfSize && fabsf(vDist) <= halfSize;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -595,6 +632,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 point{ -1.0f,0.6f,0.6f };
 
 	int sphereColor = WHITE;
+
+	int segmentColor = WHITE;
 
 	Plane plane;
 	plane.normal = { 0.0f,1.0f,0.0f };
@@ -694,10 +733,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			sphereColor = WHITE;
 		}*/
 
-		if (IsCollision(sphere, plane)) {
+	/*	if (IsCollision(sphere, plane)) {
 			sphereColor = RED;
 		} else {
 			sphereColor = WHITE;
+		}*/
+
+		if (IsCollision(segment,plane))	{
+			segmentColor = RED;
+		} else {
+			segmentColor = WHITE;
 		}
 
 		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
@@ -753,18 +798,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatriix, WHITE);
 		DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
 		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 		DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
 
 		ImGui::Begin("Window");
-		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
-		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
-		ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
-		ImGui::InputFloat3("Project", &project.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
-		ImGui::DragFloat3("Plane.Nomal", &plane.normal.x, 0.01f);
-		plane.normal = Normalize(plane.normal);
-		ImGui::DragFloat("distance", &plane.distance, 0.01f);
+		if (ImGui::CollapsingHeader("Camera")) {
+			ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
+			ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
+		}
+
+		if (ImGui::CollapsingHeader("Sphere")) {
+			ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
+			ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
+		}
+
+		if (ImGui::CollapsingHeader("Plane")) {
+			if (ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f)) {
+				plane.normal = Normalize(plane.normal);
+			}
+			ImGui::DragFloat("distance", &plane.distance, 0.01f);
+		}
+
+		if (ImGui::CollapsingHeader("Segment")) {
+			ImGui::DragFloat3("Segment.Origin", &segment.origin.x, 0.01f);
+			ImGui::DragFloat3("Segment.Diff", &segment.diff.x, 0.01f);
+		}
+
 		ImGui::End();
 
 
