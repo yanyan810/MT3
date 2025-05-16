@@ -56,6 +56,10 @@ struct Plane {
 
 };
 
+struct Triangle {
+	Vector3 vertices[3];//!<頂点
+};
+
 //1.透視投影行列
 Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspcectRatio, float nearClip, float farClip) {
 	Matrix4x4 result;
@@ -544,6 +548,13 @@ void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectMatrix, const Mat
 
 }
 
+void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+
+
+
+
+}
+
 bool IsCollision(const Sphere& s1, const Sphere& s2) {
 	Vector3 diff = Subtract(s1.center, s2.center);
 	float distanceSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
@@ -594,6 +605,12 @@ bool IsCollision(const Segment& segment, const Plane& plane) {
 	// 範囲内かどうか（ここでは矩形サイズが±2）
 	float halfSize = 2.0f;
 	return fabsf(uDist) <= halfSize && fabsf(vDist) <= halfSize;
+}
+
+bool IsCollision(const Triangle& triangle, const Segment& segment) {
+
+
+
 }
 
 // Windowsアプリでのエントリーポイント(main関数)
