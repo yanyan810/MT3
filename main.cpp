@@ -2,7 +2,7 @@
 #include <cmath>
 #include <assert.h>
 #include <windows.h>
-
+#include <algorithm>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -58,6 +58,14 @@ struct Plane {
 
 struct Triangle {
 	Vector3 vertices[3];//!<頂点
+};
+
+struct AABB {
+
+	Vector3 min;//  !<最小点
+	Vector3 max;//  !< 最大点
+
+
 };
 
 //1.透視投影行列
@@ -566,6 +574,45 @@ void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMatri
 
 }
 
+Vector3 aabbCorners[8];
+
+void GetAABBCorners(const AABB& aabb, Vector3 corners[8]) {
+	corners[0] = { aabb.min.x, aabb.min.y, aabb.min.z };
+	corners[1] = { aabb.max.x, aabb.min.y, aabb.min.z };
+	corners[2] = { aabb.max.x, aabb.max.y, aabb.min.z };
+	corners[3] = { aabb.min.x, aabb.max.y, aabb.min.z };
+	corners[4] = { aabb.min.x, aabb.min.y, aabb.max.z };
+	corners[5] = { aabb.max.x, aabb.min.y, aabb.max.z };
+	corners[6] = { aabb.max.x, aabb.max.y, aabb.max.z };
+	corners[7] = { aabb.min.x, aabb.max.y, aabb.max.z };
+}
+
+void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	Vector3 corners[8];
+	GetAABBCorners(aabb, corners);
+
+	// ビュープロジェクションとビューポートをかける
+	for (int i = 0; i < 8; ++i) {
+		corners[i] = Transform(Transform(corners[i], viewProjMatrix), viewportMatrix);
+	}
+
+	// 12本の辺を描画
+	const int edgeIndices[12][2] = {
+		{0, 1}, {1, 2}, {2, 3}, {3, 0},  // 底面
+		{4, 5}, {5, 6}, {6, 7}, {7, 4},  // 上面
+		{0, 4}, {1, 5}, {2, 6}, {3, 7}   // 側面
+	};
+
+	for (int i = 0; i < 12; ++i) {
+		const Vector3& p0 = corners[edgeIndices[i][0]];
+		const Vector3& p1 = corners[edgeIndices[i][1]];
+		Novice::DrawLine(int(p0.x), int(p0.y), int(p1.x), int(p1.y), color);
+	}
+}
+
+//===================
+// 衝突判定
+//===================
 bool IsCollision(const Sphere& s1, const Sphere& s2) {
 	Vector3 diff = Subtract(s1.center, s2.center);
 	float distanceSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
@@ -659,6 +706,15 @@ bool IsCollision(const Triangle& triangle, const Segment& segment) {
 	return (t >= 0.0f && t <= segLength);
 }
 
+bool IsCollision(const AABB& aabb1, const AABB& aabb2) {
+	return (aabb1.min.x <= aabb2.max.x && aabb1.max.x >= aabb2.min.x) &&   // X
+		(aabb1.min.y <= aabb2.max.y && aabb1.max.y >= aabb2.min.y) &&   // Y
+		(aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z);     // Z
+
+}
+
+
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -698,7 +754,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	int segmentColor = WHITE;
 
-	int triangleColor = WHITE;
+//	int triangleColor = WHITE;
 
 	Plane plane;
 	plane.normal = { 0.0f,1.0f,0.0f };
@@ -706,8 +762,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	Triangle triangle = { {
 		{-1.0f,0.0f,0.0f},
-	    {0.0f,1.0f,0.0f},
-	    {1.0f,0.0f,0.0f},
+		{0.0f,1.0f,0.0f},
+		{1.0f,0.0f,0.0f},
 	}
 	};
 
@@ -725,6 +781,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//カメラ移動の速度
 	float speed = 0.1f;
 
+	AABB aabb1{
+		.min{-0.5f,-0.5f,-0.5f},
+		.max{0.0f,0.0f,0.0f}
+
+	};
+
+	AABB aabb2{
+		.min{0.2f,0.2f,0.2f},
+		.max{1.0f,1.0f,1.0f},
+
+	};
+
+	int aabbColor = WHITE;
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -740,12 +810,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		segmentColor = WHITE;
 
+		aabbColor = WHITE;
+
 		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, cameraRotate, cameraTranslate);
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
 		Matrix4x4 viewMatrix = inverse(cameraMatrix);
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kWindowWidth) / float(kWindowHeight), 1.0f, 100.0f);
 		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		Matrix4x4 viewportMatriix = MakeViewportMatrix(0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+
+		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
+		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
+		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
+		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
+		aabb1.min.z= (std::min)(aabb1.min.z, aabb1.max.z);
+		aabb1.max.z = (std::max)(aabb1.min.z, aabb1.max.z);
+
+		aabb2.min.x = (std::min)(aabb2.min.x, aabb2.max.x);
+		aabb2.max.x = (std::max)(aabb2.min.x, aabb2.max.x);
+		aabb2.min.y = (std::min)(aabb2.min.y, aabb2.max.y);
+		aabb2.max.y = (std::max)(aabb2.min.y, aabb2.max.y);
+		aabb2.min.z = (std::min)(aabb2.min.z, aabb2.max.z);
+		aabb2.max.z = (std::max)(aabb2.min.z, aabb2.max.z);
+
 
 		//============
 		//マウスの処理
@@ -812,22 +899,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				sphereColor = WHITE;
 			}*/
 
-	/*	if (IsCollision(segment, plane)) {
-			segmentColor = RED;
-		} else {
-			segmentColor = WHITE;
-		}*/
+			/*	if (IsCollision(segment, plane)) {
+					segmentColor = RED;
+				} else {
+					segmentColor = WHITE;
+				}*/
 
-	/*	if (IsCollision(segment, plane)) {
-			triangleColor = RED;
-		} else {
-			triangleColor = WHITE;
-		}*/
+				/*	if (IsCollision(segment, plane)) {
+						triangleColor = RED;
+					} else {
+						triangleColor = WHITE;
+					}*/
 
-		if (IsCollision(triangle,segment)) {
-			triangleColor = RED;
-		} else {
-			triangleColor = WHITE;
+					/*	if (IsCollision(triangle, segment)) {
+							triangleColor = RED;
+						} else {
+							triangleColor = WHITE;
+						}*/
+
+		if (IsCollision(aabb1, aabb2)) {
+			aabbColor = RED;
 		}
 
 		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
@@ -883,9 +974,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatriix, WHITE);
 		DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
 		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);*/
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
+		//Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 		//DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
-		DrawTriangle(triangle, worldViewProjectionMatrix, viewportMatriix, triangleColor);
+	//	DrawTriangle(triangle, worldViewProjectionMatrix, viewportMatriix, triangleColor);
+		DrawAABB(aabb1, worldViewProjectionMatrix, viewportMatriix, aabbColor);
+		DrawAABB(aabb2, worldViewProjectionMatrix, viewportMatriix, aabbColor);
+
 		ImGui::Begin("Window");
 		if (ImGui::CollapsingHeader("Camera")) {
 			ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
@@ -913,6 +1007,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Triangle.Vertex1", &triangle.vertices[0].x, 0.01f);
 			ImGui::DragFloat3("Triangle.Vertex2", &triangle.vertices[1].x, 0.01f);
 			ImGui::DragFloat3("Triangle.Vertex3", &triangle.vertices[2].x, 0.01f);
+		}
+
+		if (ImGui::CollapsingHeader("AABB1")) {
+
+
+			ImGui::DragFloat("AABB1.min.x", &aabb1.min.x, 0.01f);
+			ImGui::DragFloat("AABB1.min.y", &aabb1.min.y, 0.01f);
+			ImGui::DragFloat("AABB1.min.z", &aabb1.min.z, 0.01f);
+
+			ImGui::DragFloat("AABB1.max.x", &aabb1.max.x, 0.01f);
+			ImGui::DragFloat("AABB1.max.y", &aabb1.max.y, 0.01f);
+			ImGui::DragFloat("AABB1.max.z", &aabb1.max.z, 0.01f);
+
+		}
+
+		if (ImGui::CollapsingHeader("AABB2")) {
+			ImGui::DragFloat("AABB2.min.x", &aabb2.min.x, 0.01f);
+			ImGui::DragFloat("AABB2.min.y", &aabb2.min.y, 0.01f);
+			ImGui::DragFloat("AABB2.min.z", &aabb2.min.z, 0.01f);
+
+			ImGui::DragFloat("AABB2.max.x", &aabb2.max.x, 0.01f);
+			ImGui::DragFloat("AABB2.max.y", &aabb2.max.y, 0.01f);
+			ImGui::DragFloat("AABB2.max.z", &aabb2.max.z, 0.01f);
+
 		}
 
 		ImGui::End();
