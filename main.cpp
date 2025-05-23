@@ -549,8 +549,19 @@ void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectMatrix, const Mat
 }
 
 void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	Vector3 screenVertices[3];
+	for (int i = 0; i < 3; i++) {
+		Vector3 ndcVertex = Transform(triangle.vertices[i], viewProjectionMatrix);
+		screenVertices[i] = Transform(ndcVertex, viewportMatrix);
+	}
 
-
+	// 塗りつぶしなし（線描画）
+	Novice::DrawTriangle(
+		static_cast<int>(screenVertices[0].x), static_cast<int>(screenVertices[0].y),
+		static_cast<int>(screenVertices[1].x), static_cast<int>(screenVertices[1].y),
+		static_cast<int>(screenVertices[2].x), static_cast<int>(screenVertices[2].y),
+		color, kFillModeWireFrame
+	);
 
 
 }
@@ -608,9 +619,44 @@ bool IsCollision(const Segment& segment, const Plane& plane) {
 }
 
 bool IsCollision(const Triangle& triangle, const Segment& segment) {
+	const Vector3& orig = segment.origin;
+	float segLength = sqrtf(segment.diff.x * segment.diff.x +
+		segment.diff.y * segment.diff.y +
+		segment.diff.z * segment.diff.z);
+	if (segLength < 1e-6f) return false;
 
+	Vector3 dir = {
+		segment.diff.x / segLength,
+		segment.diff.y / segLength,
+		segment.diff.z / segLength
+	};
 
+	const Vector3& v0 = triangle.vertices[0];
+	const Vector3& v1 = triangle.vertices[1];
+	const Vector3& v2 = triangle.vertices[2];
 
+	Vector3 edge1 = Subtract(v1, v0);
+	Vector3 edge2 = Subtract(v2, v0);
+
+	Vector3 pvec = Cross(dir, edge2);
+	float det = edge1.x * pvec.x + edge1.y * pvec.y + edge1.z * pvec.z;
+
+	if (fabs(det) < 1e-6f) return false;
+
+	float invDet = 1.0f / det;
+
+	Vector3 tvec = Subtract(orig, v0);
+	float u = (tvec.x * pvec.x + tvec.y * pvec.y + tvec.z * pvec.z) * invDet;
+	if (u < 0.0f || u > 1.0f) return false;
+
+	Vector3 qvec = Cross(tvec, edge1);
+	float v = (dir.x * qvec.x + dir.y * qvec.y + dir.z * qvec.z) * invDet;
+	if (v < 0.0f || u + v > 1.0f) return false;
+
+	float t = (edge2.x * qvec.x + edge2.y * qvec.y + edge2.z * qvec.z) * invDet;
+
+	// 長さで比較（Normalize済みdirを使っているため）
+	return (t >= 0.0f && t <= segLength);
 }
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -648,13 +694,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Segment segment{ {-2.0f,-1.0f,0.0f},{3.0f,2.0f,2.0f} };
 	Vector3 point{ -1.0f,0.6f,0.6f };
 
-	int sphereColor = WHITE;
+	//int sphereColor = WHITE;
 
 	int segmentColor = WHITE;
+
+	int triangleColor = WHITE;
 
 	Plane plane;
 	plane.normal = { 0.0f,1.0f,0.0f };
 	plane.distance = 1.0f;
+
+	Triangle triangle = { {
+		{-1.0f,0.0f,0.0f},
+	    {0.0f,1.0f,0.0f},
+	    {1.0f,0.0f,0.0f},
+	}
+	};
+
 	//マウスの座標
 	int mouseX = 0;
 	int mouseY = 0;
@@ -682,7 +738,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
-
+		segmentColor = WHITE;
 
 		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, cameraRotate, cameraTranslate);
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
@@ -750,16 +806,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			sphereColor = WHITE;
 		}*/
 
-	/*	if (IsCollision(sphere, plane)) {
-			sphereColor = RED;
-		} else {
-			sphereColor = WHITE;
-		}*/
+		/*	if (IsCollision(sphere, plane)) {
+				sphereColor = RED;
+			} else {
+				sphereColor = WHITE;
+			}*/
 
-		if (IsCollision(segment,plane))	{
+	/*	if (IsCollision(segment, plane)) {
 			segmentColor = RED;
 		} else {
 			segmentColor = WHITE;
+		}*/
+
+	/*	if (IsCollision(segment, plane)) {
+			triangleColor = RED;
+		} else {
+			triangleColor = WHITE;
+		}*/
+
+		if (IsCollision(triangle,segment)) {
+			triangleColor = RED;
+		} else {
+			triangleColor = WHITE;
 		}
 
 		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
@@ -811,13 +879,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, sphereColor);
+		/*DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, sphereColor);
 		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatriix, WHITE);
 		DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
-		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
+		DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);*/
 		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
-		DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
-
+		//DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		DrawTriangle(triangle, worldViewProjectionMatrix, viewportMatriix, triangleColor);
 		ImGui::Begin("Window");
 		if (ImGui::CollapsingHeader("Camera")) {
 			ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
@@ -839,6 +907,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		if (ImGui::CollapsingHeader("Segment")) {
 			ImGui::DragFloat3("Segment.Origin", &segment.origin.x, 0.01f);
 			ImGui::DragFloat3("Segment.Diff", &segment.diff.x, 0.01f);
+		}
+
+		if (ImGui::CollapsingHeader("Triangle")) {
+			ImGui::DragFloat3("Triangle.Vertex1", &triangle.vertices[0].x, 0.01f);
+			ImGui::DragFloat3("Triangle.Vertex2", &triangle.vertices[1].x, 0.01f);
+			ImGui::DragFloat3("Triangle.Vertex3", &triangle.vertices[2].x, 0.01f);
 		}
 
 		ImGui::End();
