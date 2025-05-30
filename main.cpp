@@ -988,6 +988,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		if (IsCollision(aabb1, segment)) {
 			aabbColor = RED;
+
 		} 
 
 		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
