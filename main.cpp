@@ -1,11 +1,11 @@
+#define NOMINMAX
+#include <windows.h>
+#include <algorithm>
 #include <Novice.h>
 #include <cmath>
 #include <assert.h>
-#include <windows.h>
-#include <algorithm>
 #define _USE_MATH_DEFINES
 #include <math.h>
-
 #include <imgui.h>
 
 const char kWindowTitle[] = "LE2B_25_ミヤザワハルヒ_MT3";
@@ -745,6 +745,38 @@ bool IsCollision(const AABB& aabb, const Sphere& sphere) {
 
 }
 
+//AABBと線分の衝突判定
+bool IsCollision(const AABB& aabb, const Segment& seg)
+{
+	// 方向ベクトル
+	Vector3 dir = seg.diff;
+
+	// t の有効範囲
+	float tMin = 0.0f;
+	float tMax = 1.0f;
+
+	// --- X, Y, Z ３軸で反復 ---
+	auto axisTest = [&](float origin, float dir, float min, float max) -> bool {
+		if (fabsf(dir) < 1e-6f) {
+			// 平行：原点がスラブ外なら非衝突
+			return (origin >= min && origin <= max);
+		}
+		float invDir = 1.0f / dir;
+		float t1 = (min - origin) * invDir;
+		float t2 = (max - origin) * invDir;
+		if (t1 > t2) std::swap(t1, t2);   // 小さい方を t1 に
+		tMin = std::max(tMin, t1);
+		tMax = std::min(tMax, t2);
+		return tMin <= tMax;
+		};
+
+	if (!axisTest(seg.origin.x, dir.x, aabb.min.x, aabb.max.x)) return false;
+	if (!axisTest(seg.origin.y, dir.y, aabb.min.y, aabb.max.y)) return false;
+	if (!axisTest(seg.origin.z, dir.z, aabb.min.z, aabb.max.z)) return false;
+
+	// tMax < 0 なら線分の前方に AABB、tMin > 1 なら後方なので非衝突
+	return (tMax >= 0.0f && tMin <= 1.0f);
+}
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -777,7 +809,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	sphere2.center = { 0.1f,0,3 };
 	sphere2.radius = 1.0f;
 
-	Segment segment{ {-2.0f,-1.0f,0.0f},{3.0f,2.0f,2.0f} };
+	Segment segment{ .origin{-0.7f,0.3f,0.0f},.diff{2.0f,-0.5f,0.0f} };
 	Vector3 point{ -1.0f,0.6f,0.6f };
 
 	//int sphereColor = WHITE;
@@ -801,7 +833,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	int mouseX = 0;
 	int mouseY = 0;
 
-	//マウスの前の位置
 	int prevMouseX = 0;
 	int prevMouseY = 0;
 
@@ -813,7 +844,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	AABB aabb1{
 		.min{-0.5f,-0.5f,-0.5f},
-		.max{0.0f,0.0f,0.0f}
+		.max{0.5f,0.5f,0.5f}
 
 	};
 
@@ -870,22 +901,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		Novice::GetMousePosition(&mouseX, &mouseY);
 
-		//Rキーでマウスの位置をリセット
-		if (keys[DIK_R]) {
-			SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
-		}
+		////Rキーでマウスの位置をリセット
+		//if (keys[DIK_R]) {
+		//	SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
+		//}
 
-		int dx = mouseX - prevMouseX;
-		int dy = mouseY - prevMouseY;
+	//	int dx = mouseX - prevMouseX;
+		//int dy = mouseY - prevMouseY;
 
-		//押している間移動
-		if (keys[DIK_LSHIFT]) {
-			if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
+		////押している間移動
+		//if (keys[DIK_LSHIFT]) {
+		//	if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
 
-				cameraRotate.y += dx * 0.01f;//左右回転
-				cameraRotate.x += dy * 0.01f;//上下回転
-			}
-		}
+		//		cameraRotate.y += dx * 0.01f;//左右回転
+		//		cameraRotate.x += dy * 0.01f;//上下回転
+		//	}
+		//}
 		prevMouseX = mouseX;
 		prevMouseY = mouseY;
 
@@ -951,9 +982,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			aabbColor = RED;
 		}*/
 
-		if (IsCollision(aabb1, sphere)) {
+		/*if (IsCollision(aabb1, sphere)) {
 			aabbColor = RED;
-		}
+		}*/
+
+		if (IsCollision(aabb1, segment)) {
+			aabbColor = RED;
+		} 
 
 		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
 		Vector3 closestPoint = ClosestPoint(point, segment);
@@ -1004,11 +1039,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, WHITE);
+	//	DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, WHITE);
 		//DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatriix, WHITE);
 	//	DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
 	//	DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
-		//Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 		//DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
 	//	DrawTriangle(triangle, worldViewProjectionMatrix, viewportMatriix, triangleColor);
 		DrawAABB(aabb1, worldViewProjectionMatrix, viewportMatriix, aabbColor);
@@ -1065,6 +1100,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat("AABB2.max.y", &aabb2.max.y, 0.01f);
 			ImGui::DragFloat("AABB2.max.z", &aabb2.max.z, 0.01f);
 
+		}
+
+		if (ImGui::CollapsingHeader("Camera Position")) {
+			ImGui::DragFloat("CameraPosition.x", &cameraRotate.x, 0.01f);
+			ImGui::DragFloat("CameraPosition.y", &cameraRotate.y, 0.01f);
+		//	ImGui::DragFloat("CameraPosition.z", &cameraPosition.z, 0.01f);
 		}
 
 		ImGui::End();
