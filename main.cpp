@@ -379,6 +379,19 @@ Vector3 Normalize(const Vector3& vector) {
 //	length = sqrtf(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
 //}
 
+Vector3 Lerp(const Vector3& v1, const Vector3& v2,float t) {
+
+	float time = 1.0f - t;
+	Vector3 result;
+
+	result.x = time * time * v1.x + 2.0f * time * t * v2.x + t * t * v2.x;
+	result.y = time * time * v1.y + 2.0f * time * t * v2.y + t * t * v2.y;
+	result.z = time * time * v1.z + 2.0f * time * t * v2.z + t * t * v2.z;
+
+	return result;
+
+}
+
 void MatrixScreenPrintf(int x, int y, const Matrix4x4& m, const char* label) {
 	Novice::ScreenPrintf(x, y + 20, "%s", label);
 	for (int row = 0; row < 4; row++) {
@@ -615,6 +628,53 @@ void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjMatrix, const Matrix4x4
 		const Vector3& p1 = corners[edgeIndices[i][1]];
 		Novice::DrawLine(int(p0.x), int(p0.y), int(p1.x), int(p1.y), color);
 	}
+}
+
+//2点を求める
+static Vector3 EvaluateQuadraticBezier(const Vector3& p0,
+	const Vector3& p1,
+	const Vector3& p2,
+	float t)
+{
+	/* 1回目の補間 */
+	Vector3 a = Lerp(p0, p1, t);   // A(t)
+	Vector3 b = Lerp(p1, p2, t);   // B(t)
+	/* 2回目の補間で曲線点 Q(t) */
+	return Lerp(a, b, t);          // Q(t)
+}
+
+void DrawBezier(const Vector3& controlPoint0,const Vector3 controlPoint1,const Vector3& controlPoint2,
+	const Matrix4x4& viewProjectionMatrix,const Matrix4x4&viewportMatrix,int& cutNum,uint32_t color ){
+
+	Vector3 p0 = Transform(Transform(controlPoint0, viewProjectionMatrix), viewportMatrix);
+	Vector3 p1 = Transform(Transform(controlPoint1, viewProjectionMatrix), viewportMatrix);
+	Vector3 p2 = Transform(Transform(controlPoint2, viewProjectionMatrix), viewportMatrix);
+	
+	Novice::DrawEllipse(int(p0.x), int(p0.y), 5, 5,0.0f, BLACK, kFillModeSolid);
+	Novice::DrawEllipse(int(p1.x), int(p1.y), 5, 5, 0.0f, BLACK, kFillModeSolid);
+	Novice::DrawEllipse(int(p2.x), int(p2.y), 5, 5, 0.0f, BLACK, kFillModeSolid);
+
+	for (int i = 0; i < cutNum; ++i) {
+		float t0 = float(i) / cutNum;   // 区間の始点
+		float t1 = float(i + 1) / cutNum;   // 区間の終点
+
+		
+	  // 曲線上の 2 点を取得 
+		Vector3 q0 = EvaluateQuadraticBezier(controlPoint0, controlPoint1, controlPoint2, t0);
+		Vector3 q1 = EvaluateQuadraticBezier(controlPoint0, controlPoint1, controlPoint2, t1);
+
+
+	
+
+		// ワールド→スクリーン変換
+		Vector3 sp0 = Transform(Transform(q0, viewProjectionMatrix), viewportMatrix);
+		Vector3 sp1 = Transform(Transform(q1, viewProjectionMatrix), viewportMatrix);
+
+		Novice::DrawLine(int(sp0.x), int(sp0.y), int(sp1.x), int(sp1.y), color);
+	}
+			
+
+
 }
 
 //===================
@@ -854,6 +914,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	};
 
+	Vector3 contorlPositions[3] = {
+		{ -0.8f, 0.58f, 1.0f }, // 制御点1
+		{ 1.76f, 1.0f, -0.3f }, // 制御点2
+		{ 0.94f, -0.7f, 2.3f }  // 制御点3
+	};
+
+	int cutNum = 16;
+
 	int aabbColor = WHITE;
 
 	// ウィンドウの×ボタンが押されるまでループ
@@ -1050,6 +1118,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawAABB(aabb1, worldViewProjectionMatrix, viewportMatriix, aabbColor);
 		//DrawAABB(aabb2, worldViewProjectionMatrix, viewportMatriix, aabbColor);
 
+		DrawBezier(
+			contorlPositions[0],
+			contorlPositions[1],
+			contorlPositions[2],
+			worldViewProjectionMatrix,
+			viewportMatriix,
+			cutNum, // 分割数
+			BLUE
+		);
+
 		ImGui::Begin("Window");
 		if (ImGui::CollapsingHeader("Camera")) {
 			ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
@@ -1108,6 +1186,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat("CameraPosition.y", &cameraRotate.y, 0.01f);
 		//	ImGui::DragFloat("CameraPosition.z", &cameraPosition.z, 0.01f);
 		}
+
+		if (ImGui::CollapsingHeader("Control Points")) {
+			ImGui::DragFloat3("ControlPoint1", &contorlPositions[0].x, 0.01f);
+			ImGui::DragFloat3("ControlPoint2", &contorlPositions[1].x, 0.01f);
+			ImGui::DragFloat3("ControlPoint3", &contorlPositions[2].x, 0.01f);
+		}
+	
 
 		ImGui::End();
 
