@@ -68,6 +68,10 @@ struct AABB {
 
 };
 
+
+
+
+
 //1.透視投影行列
 Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspcectRatio, float nearClip, float farClip) {
 	Matrix4x4 result;
@@ -156,6 +160,20 @@ Vector3 VectorAdd(const Vector3& v1, const Vector3& v2) {
 	result.x = v1.x + v2.x;
 	result.y = v1.y + v2.y;
 	result.z = v1.z + v2.z;
+	return result;
+}
+
+//1.行列の加法
+Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result;
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			result.m[i][j] = m1.m[i][j] + m2.m[i][j];
+			result.m[i][j] = m1.m[i][j] + m2.m[i][j];
+			result.m[i][j] = m1.m[i][j] + m2.m[i][j];
+			result.m[i][j] = m1.m[i][j] + m2.m[i][j];
+		}
+	}
 	return result;
 }
 
@@ -340,6 +358,46 @@ Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Ve
 
 	return result;
 }
+//x回転
+Matrix4x4 MakeRotateXMatrix(float v) {
+
+	Matrix4x4 result{};
+	result.m[0][0] = 1.0f;
+	result.m[1][1] = cosf(v);
+	result.m[1][2] = -sinf(v);
+	result.m[2][1] = sinf(v);
+	result.m[2][2] = cosf(v);
+	result.m[3][3] = 1.0f;
+	return result;
+
+}
+
+//y回転
+
+Matrix4x4 MakeRotateYMatrix(float v) {
+	Matrix4x4 result{};
+	result.m[0][0] = cosf(v);
+	result.m[0][2] = sinf(v);
+	result.m[1][1] = 1.0f;
+	result.m[2][0] = -sinf(v);
+	result.m[2][2] = cosf(v);
+	result.m[3][3] = 1.0f;
+	return result;
+}
+
+//z回転
+Matrix4x4 MakeRotateZMatrix(float v) {
+	Matrix4x4 result{};
+	result.m[0][0] = cosf(v);
+	result.m[0][1] = sinf(v);
+	result.m[1][0] = -sinf(v);
+	result.m[1][1] = cosf(v);
+	result.m[2][2] = 1.0f;
+	result.m[3][3] = 1.0f;
+
+	return result;
+}
+
 
 //3.座標変換
 Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix) {
@@ -852,6 +910,50 @@ inline Sphere MakeSphereFromMatrix(const Matrix4x4& m, float r)
 	return { { m.m[3][0], m.m[3][1], m.m[3][2] }, r };
 }
 
+//=======================
+//二項演算子
+//=======================
+Vector3 operator+(const Vector3& v1, const Vector3& v2) {
+
+	return VectorAdd(v1, v2);
+}
+
+Vector3 operator-(const Vector3& v1, const Vector3& v2) {
+	return Subtract(v1, v2);
+}
+
+Vector3 operator*(float s, const Vector3& v) {
+	return Multiply(s, v);
+}
+
+Vector3 operator*(const Vector3& v, float s) {
+	return s * v;
+}
+
+Vector3 operator/(const Vector3 v, float s) {
+
+	return Multiply(1.0f / s, v);
+
+}
+
+Matrix4x4 operator+(const Matrix4x4& m1, const Matrix4x4& m2) {
+
+	return Add(m1, m2);
+}
+
+Matrix4x4 operator-(const Matrix4x4& m1, const Matrix4x4& m2) {
+	return Subtract(m1, m2);
+}
+
+Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2) {
+	return Multiply(m1, m2);
+}
+
+//=======================
+//複合代入演算子
+//=======================
+
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -958,6 +1060,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	};
 
 	float sphereRadius = 0.05f;
+
+	Vector3 a{ 0.2f,1.0f,0.0f };
+	Vector3 b{ 2.4f,3.1f,1.2f };
+
+	Vector3 rotate{ 0.4f,1.43f,-0.8f };
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1152,6 +1259,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		//rotate.y += 0.05f;
 
+		//演算子オーバーロードの計算
+		Vector3 c = a + b;
+		Vector3 d = a - b;
+		Vector3 e = a * 2.4f; 
+
+		Matrix4x4 rotateXMatorix = MakeRotateXMatrix(rotate.x);
+		Matrix4x4 rotateYMatorix = MakeRotateYMatrix(rotate.y);
+		Matrix4x4 rotateZMatorix = MakeRotateZMatrix(rotate.z);
+		Matrix4x4 rotateMatrix = rotateXMatorix * rotateYMatorix * rotateZMatorix;
+
 		///
 		/// ↑更新処理ここまで
 		///
@@ -1202,7 +1319,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 	
-			ImGui::DragFloat3("translate[0].x", &translates[0].x, 0.01f);
+		/*	ImGui::DragFloat3("translate[0].x", &translates[0].x, 0.01f);
 			
 			ImGui::DragFloat3("rotate[0].x", &rotates[0].x, 0.01f);
 		
@@ -1218,8 +1335,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 			ImGui::DragFloat3("rotate[2].x", &rotates[2].x, 0.01f);
 			
-			ImGui::DragFloat3("scale[2].x", &scales[2].x, 0.01f);
+			ImGui::DragFloat3("scale[2].x", &scales[2].x, 0.01f);*/
 			
+		ImGui::End();
+
+		ImGui::Begin("Window");
+		ImGui::Text("c:%f,%f,%f", c.x, c.y, c.z);
+		ImGui::Text("d:%f,%f,%f", d.x, d.y, d.z);
+		ImGui::Text("e:%f,%f,%f", e.x, e.y, e.z);
+		ImGui::Text(
+			"matrix:\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f",
+			rotateMatrix.m[0][0], rotateMatrix.m[0][1], rotateMatrix.m[0][2], rotateMatrix.m[0][3],
+			rotateMatrix.m[1][0], rotateMatrix.m[1][1], rotateMatrix.m[1][2], rotateMatrix.m[1][3],
+			rotateMatrix.m[2][0], rotateMatrix.m[2][1], rotateMatrix.m[2][2], rotateMatrix.m[2][3],
+			rotateMatrix.m[3][0], rotateMatrix.m[3][1], rotateMatrix.m[3][2], rotateMatrix.m[3][3]
+
+		);
+
 
 		//if (ImGui::CollapsingHeader("Sphere")) {
 		//	ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
