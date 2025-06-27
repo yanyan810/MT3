@@ -68,8 +68,22 @@ struct AABB {
 
 };
 
+struct Spring {
+	//アンカー。固定された端の位置
+	Vector3 anchor;
+	float naturalLenght;//自然長
+	float stiffness;//剛性。ばね定数k
 
+};
 
+struct Ball {
+	Vector3 position; //!<位置
+	Vector3 velocity; //!<速度
+	Vector3 acceleration; //!<加速度
+	float mass; //!<質量
+	float radius; //!<半径
+	unsigned int color; //!<色
+};
 
 
 //1.透視投影行列
@@ -438,12 +452,12 @@ Vector3 Normalize(const Vector3& vector) {
 	return result;
 }
 
-//距離
-//void Length(const Vector3& vector) {
-//
-//	Vector3 length = 0;
-//	length = sqrtf(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-//}
+//長さ
+float Length(const Vector3& vector) {
+	return sqrtf(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+}
+
+
 
 Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t) {
 
@@ -949,9 +963,35 @@ Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2) {
 	return Multiply(m1, m2);
 }
 
+//単項演算子
+Vector3 operator-(const Vector3& v) {
+	return { -v.x, -v.y, -v.z };
+}
+
+Vector3 operator+(const Vector3& v) {
+	return v;
+}
+
 //=======================
 //複合代入演算子
 //=======================
+
+Vector3& operator+=(Vector3& v1, const Vector3& v2) {
+	v1 = VectorAdd(v1, v2);
+	return v1;
+}
+Vector3& operator-=(Vector3& v1, const Vector3& v2) {
+	v1 = Subtract(v1, v2);
+	return v1;
+}
+Vector3& operator*=(Vector3& v, float s) {
+	v = Multiply(s, v);
+	return v;
+}
+Vector3& operator/=(Vector3& v, float s) {
+	v = Multiply(1.0f / s, v);
+	return v;
+}
 
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -1059,12 +1099,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		{1.0f,1.0f,1.0f},
 	};
 
-	float sphereRadius = 0.05f;
+	//float sphereRadius = 0.05f;
 
 	Vector3 a{ 0.2f,1.0f,0.0f };
 	Vector3 b{ 2.4f,3.1f,1.2f };
 
 	Vector3 rotate{ 0.4f,1.43f,-0.8f };
+
+	Spring spring{};
+	spring.anchor = { 0.0f, 0.0f, 0.0f };
+	spring.naturalLenght = 1.0f;
+	spring.stiffness = 100.0f;
+
+	Ball ball{};
+	ball.position = { 1.2f, 0.0f, 0.0f };
+	ball.mass = 2.0f;
+	ball.radius = 0.05f;
+	ball.color = BLUE;
+
+	bool isSpring = false;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1226,7 +1279,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		Matrix4x4 worldElbow = Multiply(localElbow, localShoilder);
 
-		Matrix4x4 worldHand = Multiply(localHand, Multiply(localElbow,localShoilder));
+		Matrix4x4 worldHand = Multiply(localHand, Multiply(localElbow, localShoilder));
 
 		Vector3 sholderPosScreen = Transform(Transform({ worldShoilder.m[3][0], worldShoilder.m[3][1], worldShoilder.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
 
@@ -1262,12 +1315,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//演算子オーバーロードの計算
 		Vector3 c = a + b;
 		Vector3 d = a - b;
-		Vector3 e = a * 2.4f; 
+		Vector3 e = a * 2.4f;
 
 		Matrix4x4 rotateXMatorix = MakeRotateXMatrix(rotate.x);
 		Matrix4x4 rotateYMatorix = MakeRotateYMatrix(rotate.y);
 		Matrix4x4 rotateZMatorix = MakeRotateZMatrix(rotate.z);
 		Matrix4x4 rotateMatrix = rotateXMatorix * rotateYMatorix * rotateZMatorix;
+
+		//===============
+		//ばねを作る
+		//===============
+
+		if (isSpring) {
+
+		float deltaTime = 1.0f / 60.0f;
+		Vector3 diff = ball.position - spring.anchor;
+		float lenght = Length(diff);
+		if (lenght != 0.0f) {
+			Vector3 direction = Normalize(diff);
+			Vector3 restPosition = spring.anchor + direction * spring.naturalLenght;
+			Vector3 displacement = lenght * (ball.position - restPosition);
+			Vector3 restoringForce = -spring.stiffness * displacement;
+			Vector3 force = restoringForce;
+			ball.acceleration = force / ball.mass;
+		}
+
+		//加速度も速度もどちらも秒を基準とした値で求める
+		//それが、1/60秒間(deltaTime)適用されたと考える
+		ball.velocity += ball.acceleration * deltaTime;
+		ball.position += ball.velocity * deltaTime;
+
+	}
+
+		Vector3 screenSpringAnchor = Transform(Transform(spring.anchor, worldViewProjectionMatrix), viewportMatriix);
+		Vector3 screenBallPosition = Transform(Transform(ball.position, worldViewProjectionMatrix), viewportMatriix);
 
 		///
 		/// ↑更新処理ここまで
@@ -1282,34 +1363,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-		//	DrawSphere(sphere, worldViewProjectionMatrix, viewportMatriix, WHITE);
-			//DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatriix, WHITE);
-		//	DrawSphere(pointSphere, worldViewProjectionMatrix, viewportMatriix, RED);
-		//	DrawSphere(closestPointSphere, worldViewProjectionMatrix, viewportMatriix, BLACK);
-			//Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
-			//DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
-		//	DrawTriangle(triangle, worldViewProjectionMatrix, viewportMatriix, triangleColor);
-			//DrawAABB(aabb1, worldViewProjectionMatrix, viewportMatriix, aabbColor);
-			//DrawAABB(aabb2, worldViewProjectionMatrix, viewportMatriix, aabbColor);
-		//DrawBezier(
-		//	contorlPositions[0],
-		//	contorlPositions[1],
-		//	contorlPositions[2],
-		//	worldViewProjectionMatrix,
-		//	viewportMatriix,
-		//	cutNum, // 分割数
-		//	BLUE
-		//);
+	
+		//ばね用
 
-		Novice::DrawLine(int(sholderPosScreen.x), int(sholderPosScreen.y), int(elbowPosScreen.x), int(elbowPosScreen.y), WHITE);
+		Novice::DrawEllipse(
+			int(screenBallPosition.x),
+			int(screenBallPosition.y),
+			5, 5, 0.0f, BLACK, kFillModeSolid
+		);
 
-		Novice::DrawLine(int(elbowPosScreen.x), int(elbowPosScreen.y), int(handPosScreen.x), int(handPosScreen.y), WHITE);
-
-		DrawSphere(MakeSphereFromMatrix(worldShoilder,sphereRadius), worldViewProjectionMatrix, viewportMatriix, RED);
-
-		DrawSphere(MakeSphereFromMatrix(worldElbow, sphereRadius), worldViewProjectionMatrix, viewportMatriix, GREEN);
-
-		DrawSphere(MakeSphereFromMatrix(worldHand, sphereRadius), worldViewProjectionMatrix, viewportMatriix, BLUE);
+		Novice::DrawLine(
+			int(screenSpringAnchor.x),
+			int(screenSpringAnchor.y),
+			int(screenBallPosition.x),
+			int(screenBallPosition.y),
+			WHITE
+		);
 
 
 		ImGui::Begin("Window");
@@ -1318,108 +1387,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 		}
 
+		ImGui::Checkbox("isSpring", &isSpring);
 	
-		/*	ImGui::DragFloat3("translate[0].x", &translates[0].x, 0.01f);
-			
-			ImGui::DragFloat3("rotate[0].x", &rotates[0].x, 0.01f);
-		
-			ImGui::DragFloat3("scale[0].x", &scales[0].x, 0.01f);
-			
-			ImGui::DragFloat3("translate[1].x", &translates[1].x, 0.01f);
-			
-			ImGui::DragFloat3("rotate[1].x", &rotates[1].x, 0.01f);
-		
-			ImGui::DragFloat3("scale[1].x", &scales[1].x, 0.01f);
-			
-			ImGui::DragFloat3("translate[2].x", &translates[2].x, 0.01f);
-		
-			ImGui::DragFloat3("rotate[2].x", &rotates[2].x, 0.01f);
-			
-			ImGui::DragFloat3("scale[2].x", &scales[2].x, 0.01f);*/
 			
 		ImGui::End();
 
-		ImGui::Begin("Window");
-		ImGui::Text("c:%f,%f,%f", c.x, c.y, c.z);
-		ImGui::Text("d:%f,%f,%f", d.x, d.y, d.z);
-		ImGui::Text("e:%f,%f,%f", e.x, e.y, e.z);
-		ImGui::Text(
-			"matrix:\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f",
-			rotateMatrix.m[0][0], rotateMatrix.m[0][1], rotateMatrix.m[0][2], rotateMatrix.m[0][3],
-			rotateMatrix.m[1][0], rotateMatrix.m[1][1], rotateMatrix.m[1][2], rotateMatrix.m[1][3],
-			rotateMatrix.m[2][0], rotateMatrix.m[2][1], rotateMatrix.m[2][2], rotateMatrix.m[2][3],
-			rotateMatrix.m[3][0], rotateMatrix.m[3][1], rotateMatrix.m[3][2], rotateMatrix.m[3][3]
-
-		);
-
-
-		//if (ImGui::CollapsingHeader("Sphere")) {
-		//	ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
-		//	ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
-		//}
-
-		//if (ImGui::CollapsingHeader("Plane")) {
-		//	if (ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f)) {
-		//		plane.normal = Normalize(plane.normal);
-		//	}
-		//	ImGui::DragFloat("distance", &plane.distance, 0.01f);
-		//}
-
-		//if (ImGui::CollapsingHeader("Segment")) {
-		//	ImGui::DragFloat3("Segment.Origin", &segment.origin.x, 0.01f);
-		//	ImGui::DragFloat3("Segment.Diff", &segment.diff.x, 0.01f);
-		//}
-
-		//if (ImGui::CollapsingHeader("Triangle")) {
-		//	ImGui::DragFloat3("Triangle.Vertex1", &triangle.vertices[0].x, 0.01f);
-		//	ImGui::DragFloat3("Triangle.Vertex2", &triangle.vertices[1].x, 0.01f);
-		//	ImGui::DragFloat3("Triangle.Vertex3", &triangle.vertices[2].x, 0.01f);
-		//}
-
-		//if (ImGui::CollapsingHeader("AABB1")) {
-
-
-		//	ImGui::DragFloat("AABB1.min.x", &aabb1.min.x, 0.01f);
-		//	ImGui::DragFloat("AABB1.min.y", &aabb1.min.y, 0.01f);
-		//	ImGui::DragFloat("AABB1.min.z", &aabb1.min.z, 0.01f);
-
-		//	ImGui::DragFloat("AABB1.max.x", &aabb1.max.x, 0.01f);
-		//	ImGui::DragFloat("AABB1.max.y", &aabb1.max.y, 0.01f);
-		//	ImGui::DragFloat("AABB1.max.z", &aabb1.max.z, 0.01f);
-
-		//}
-
-		//if (ImGui::CollapsingHeader("AABB2")) {
-		//	ImGui::DragFloat("AABB2.min.x", &aabb2.min.x, 0.01f);
-		//	ImGui::DragFloat("AABB2.min.y", &aabb2.min.y, 0.01f);
-		//	ImGui::DragFloat("AABB2.min.z", &aabb2.min.z, 0.01f);
-
-		//	ImGui::DragFloat("AABB2.max.x", &aabb2.max.x, 0.01f);
-		//	ImGui::DragFloat("AABB2.max.y", &aabb2.max.y, 0.01f);
-		//	ImGui::DragFloat("AABB2.max.z", &aabb2.max.z, 0.01f);
-
-		//}
-
-		//if (ImGui::CollapsingHeader("Camera Position")) {
-		//	ImGui::DragFloat("CameraPosition.x", &cameraRotate.x, 0.01f);
-		//	ImGui::DragFloat("CameraPosition.y", &cameraRotate.y, 0.01f);
-		//	//	ImGui::DragFloat("CameraPosition.z", &cameraPosition.z, 0.01f);
-		//}
-
-		//if (ImGui::CollapsingHeader("Control Points")) {
-		//	ImGui::DragFloat3("ControlPoint1", &contorlPositions[0].x, 0.01f);
-		//	ImGui::DragFloat3("ControlPoint2", &contorlPositions[1].x, 0.01f);
-		//	ImGui::DragFloat3("ControlPoint3", &contorlPositions[2].x, 0.01f);
-		//}
-
-
-		ImGui::End();
-
-
-		/*Novice::DrawTriangle(
-			int(screenVertices[0].x), int(screenVertices[0].y), int(screenVertices[1].x), int(screenVertices[1].y),
-			int(screenVertices[2].x), int(screenVertices[2].y), RED, kFillModeSolid
-		);*/
+	
 		///
 		/// ↑描画処理ここまで
 		///
