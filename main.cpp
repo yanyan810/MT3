@@ -993,6 +993,15 @@ Vector3& operator/=(Vector3& v, float s) {
 	return v;
 }
 
+struct Pendulum {
+
+	Vector3 anchor;
+	float length;
+	float angle;
+	float angularVelocity;
+	float angularAcceleration;
+
+};
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -1119,17 +1128,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	bool isRotate = false;
 
-	float angularVelocity = 3.14f;
-	float angle = 0.0f;;
+	/*float angularVelocity = 3.14f;
+	float angle = 0.0f;;*/
 
 	float deltaTime = 1.0f / 60.0f;
 
+
+
+	//振り子
+	Pendulum pendulum{};
+	pendulum.anchor = { 0.0f, 1.0f, 0.0f };
+	pendulum.length = 0.8f;
+	pendulum.angle = 0.7f; // 初期角度
+	pendulum.angularVelocity = 0.0f;
+	pendulum.angularAcceleration = 0.0f;
+
 	Sphere p{};
-	p.center.x = sphere.center.x + cosf(angle) * sphere.radius;
-	p.center.y = sphere.center.y + sinf(angle) * sphere.radius;
-	p.center.z = sphere.center.z;
+	p.center.x = pendulum.anchor.x + sinf(pendulum.angle) * pendulum.length;
+	p.center.y = pendulum.anchor.y - cosf(pendulum.angle) * pendulum.length;
+	p.center.z = pendulum.anchor.z;
 	p.radius = 0.08f;
-	
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1335,14 +1353,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 rotateMatrix = rotateXMatorix * rotateYMatorix * rotateZMatorix;
 
 		//===============
-		//円運動を作る
+		//振り子を作る
 		//===============
 		if (isRotate) {
-			angle += angularVelocity * deltaTime;
+			pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
+			pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
+			pendulum.angle += pendulum.angularVelocity * deltaTime;
 
-			p.center.x = sphere.center.x + cosf(angle) * sphere.radius;
-			p.center.y = sphere.center.y + sinf(angle) * sphere.radius;
-			p.center.z = sphere.center.z;
+			// 振り子の位置を計算
+			p.center.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
+			p.center.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
+			p.center.z = pendulum.anchor.z;
+
+
 		}
 
 		///
