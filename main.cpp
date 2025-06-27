@@ -1003,6 +1003,14 @@ struct Pendulum {
 
 };
 
+struct ConicalPendulum {
+	Vector3 anchor;
+	float length;
+	float helfApexAngle;
+	float angularVelocity;
+	float angle;
+};
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -1120,11 +1128,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	spring.naturalLenght = 1.0f;
 	spring.stiffness = 100.0f;
 
-	Ball ball{};
+	/*Ball ball{};
 	ball.position = { 1.2f, 0.0f, 0.0f };
 	ball.mass = 2.0f;
 	ball.radius = 0.05f;
-	ball.color = BLUE;
+	ball.color = BLUE;*/
 
 	bool isRotate = false;
 
@@ -1148,6 +1156,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	p.center.y = pendulum.anchor.y - cosf(pendulum.angle) * pendulum.length;
 	p.center.z = pendulum.anchor.z;
 	p.radius = 0.08f;
+
+
+	ConicalPendulum conicalPendulum{};
+	conicalPendulum.anchor = { 0.0f, 1.0f, 0.0f };
+	conicalPendulum.length = 0.8f;
+	conicalPendulum.helfApexAngle = 0.7f; // 半頂角
+	conicalPendulum.angularVelocity = 0.0f;
+	conicalPendulum.angle = 0.0f; // 初期角度
+
+	Sphere ball{};
+	conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
+
+	conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
+
+	float radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
+	float height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
+
+	ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
+	ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
+	ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
+	ball.radius = 0.08f; // 球の半径
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1355,19 +1384,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//===============
 		//振り子を作る
 		//===============
+
+		conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
+
+		conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
+
+		radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
+		height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
+
 		if (isRotate) {
-			pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
-			pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
-			pendulum.angle += pendulum.angularVelocity * deltaTime;
+			//pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
+			//pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
+			//pendulum.angle += pendulum.angularVelocity * deltaTime;
 
-			// 振り子の位置を計算
-			p.center.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
-			p.center.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
-			p.center.z = pendulum.anchor.z;
-
+			//// 振り子の位置を計算
+			//p.center.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
+			//p.center.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
+			//p.center.z = pendulum.anchor.z;
+		
+			ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
+			ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
+			ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
 
 		}
 
+		Vector3 anchorScreen = Transform(Transform(conicalPendulum.anchor, worldViewProjectionMatrix), viewportMatriix);
+		Vector3 ballScreen = Transform(Transform(ball.center, worldViewProjectionMatrix), viewportMatriix);
 		///
 		/// ↑更新処理ここまで
 		///
@@ -1378,26 +1420,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		//VectorScreenPrintf(0, 0, cross, "Cross");
 
-
-
-		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-
-		//球用
-		DrawSphere(p, worldViewProjectionMatrix, viewportMatriix, WHITE);
-
-
-
-
 		ImGui::Begin("Window");
 		if (ImGui::CollapsingHeader("Camera")) {
 			ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 			ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 		}
 
+		ImGui::SliderFloat("Length", &conicalPendulum.length, 0.1f, 5.0f);
+		ImGui::SliderFloat("HelfApexAngle", &conicalPendulum.helfApexAngle, 0.1f, 1.569f);
 		ImGui::Checkbox("isRotate", &isRotate);
-
-
+		
 		ImGui::End();
+
+
+		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
+
+		//線
+		Novice::DrawLine(int(anchorScreen.x), int(anchorScreen.y), int(ballScreen.x), int(ballScreen.y), WHITE);
+		//球用
+		DrawSphere(ball, worldViewProjectionMatrix, viewportMatriix, WHITE);
+
+
+
+
+		
 
 
 		///
