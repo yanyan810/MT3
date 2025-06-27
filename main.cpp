@@ -1023,8 +1023,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	sphere.radius = 1.0f;
 
 	Sphere sphere2;
-	sphere2.center = { 0.1f,0,3 };
-	sphere2.radius = 1.0f;
+	sphere2.center = { 0.1f,0.0f,0.3f };
+	sphere2.radius = 0.8f;
 
 	Segment segment{ .origin{-0.7f,0.3f,0.0f},.diff{2.0f,-0.5f,0.0f} };
 	Vector3 point{ -1.0f,0.6f,0.6f };
@@ -1117,7 +1117,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ball.radius = 0.05f;
 	ball.color = BLUE;
 
-	bool isSpring = false;
+	bool isRotate = false;
+
+	float angularVelocity = 3.14f;
+	float angle = 0.0f;;
+
+	float deltaTime = 1.0f / 60.0f;
+
+	Sphere p{};
+	p.center.x = sphere.center.x + cosf(angle) * sphere.radius;
+	p.center.y = sphere.center.y + sinf(angle) * sphere.radius;
+	p.center.z = sphere.center.z;
+	p.radius = 0.08f;
+	
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1169,17 +1181,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//	SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
 		//}
 
-	//	int dx = mouseX - prevMouseX;
-		//int dy = mouseY - prevMouseY;
+		int dx = mouseX - prevMouseX;
+		int dy = mouseY - prevMouseY;
 
-		////押している間移動
-		//if (keys[DIK_LSHIFT]) {
-		//	if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
+		//押している間移動
+		if (keys[DIK_LSHIFT]) {
+			if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
 
-		//		cameraRotate.y += dx * 0.01f;//左右回転
-		//		cameraRotate.x += dy * 0.01f;//上下回転
-		//	}
-		//}
+				cameraRotate.y += dx * 0.01f;//左右回転
+				cameraRotate.x += dy * 0.01f;//上下回転
+			}
+		}
 		prevMouseX = mouseX;
 		prevMouseY = mouseY;
 
@@ -1323,32 +1335,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 rotateMatrix = rotateXMatorix * rotateYMatorix * rotateZMatorix;
 
 		//===============
-		//ばねを作る
+		//円運動を作る
 		//===============
+		if (isRotate) {
+			angle += angularVelocity * deltaTime;
 
-		if (isSpring) {
-
-		float deltaTime = 1.0f / 60.0f;
-		Vector3 diff = ball.position - spring.anchor;
-		float lenght = Length(diff);
-		if (lenght != 0.0f) {
-			Vector3 direction = Normalize(diff);
-			Vector3 restPosition = spring.anchor + direction * spring.naturalLenght;
-			Vector3 displacement = lenght * (ball.position - restPosition);
-			Vector3 restoringForce = -spring.stiffness * displacement;
-			Vector3 force = restoringForce;
-			ball.acceleration = force / ball.mass;
+			p.center.x = sphere.center.x + cosf(angle) * sphere.radius;
+			p.center.y = sphere.center.y + sinf(angle) * sphere.radius;
+			p.center.z = sphere.center.z;
 		}
-
-		//加速度も速度もどちらも秒を基準とした値で求める
-		//それが、1/60秒間(deltaTime)適用されたと考える
-		ball.velocity += ball.acceleration * deltaTime;
-		ball.position += ball.velocity * deltaTime;
-
-	}
-
-		Vector3 screenSpringAnchor = Transform(Transform(spring.anchor, worldViewProjectionMatrix), viewportMatriix);
-		Vector3 screenBallPosition = Transform(Transform(ball.position, worldViewProjectionMatrix), viewportMatriix);
 
 		///
 		/// ↑更新処理ここまで
@@ -1363,22 +1358,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-	
-		//ばね用
 
-		Novice::DrawEllipse(
-			int(screenBallPosition.x),
-			int(screenBallPosition.y),
-			5, 5, 0.0f, BLACK, kFillModeSolid
-		);
+		//球用
+		DrawSphere(p, worldViewProjectionMatrix, viewportMatriix, WHITE);
 
-		Novice::DrawLine(
-			int(screenSpringAnchor.x),
-			int(screenSpringAnchor.y),
-			int(screenBallPosition.x),
-			int(screenBallPosition.y),
-			WHITE
-		);
+
 
 
 		ImGui::Begin("Window");
@@ -1387,12 +1371,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 		}
 
-		ImGui::Checkbox("isSpring", &isSpring);
-	
-			
+		ImGui::Checkbox("isRotate", &isRotate);
+
+
 		ImGui::End();
 
-	
+
 		///
 		/// ↑描画処理ここまで
 		///
