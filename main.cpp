@@ -1011,6 +1011,25 @@ struct ConicalPendulum {
 	float angle;
 };
 
+Vector3 Reflect(const Vector3& input, const Vector3& normal) {
+	// 入力ベクトルと法線ベクトルを正規化
+	Vector3 norm = Normalize(normal);
+	// 入力ベクトルの法線成分を求める
+	float dot = input.x * norm.x + input.y * norm.y + input.z * norm.z;
+	// 反射ベクトルを計算
+	Vector3 reflection = {
+		input.x - 2.0f * dot * norm.x,
+		input.y - 2.0f * dot * norm.y,
+		input.z - 2.0f * dot * norm.z
+	};
+	return reflection;
+}
+
+struct Capsule {
+	Segment segment; // 中心線
+	float radius;
+};
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -1053,8 +1072,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//	int triangleColor = WHITE;
 
 	Plane plane;
-	plane.normal = { 0.0f,1.0f,0.0f };
-	plane.distance = 1.0f;
+	plane.normal = Normalize({ -0.5f,1.5f,-0.5f });
+	plane.distance = 0.0f;
 
 	Triangle triangle = { {
 		{-1.0f,0.0f,0.0f},
@@ -1177,6 +1196,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
 	ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
 	ball.radius = 0.08f; // 球の半径
+
+	Ball ball2{};
+	ball2.position = { 1.1f, 1.2f, 0.3f };
+	ball2.acceleration = { 0.0f,-9.8f,0.0f };
+	ball2.mass = 2.0f;
+	ball2.radius = 0.05f;
+	ball2.color = WHITE;
+
+	float e = 0.5f;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1308,9 +1336,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 							aabbColor = RED;
 						}*/
 
-		if (IsCollision(aabb1, segment)) {
-			aabbColor = RED;
+		if (isRotate) {
 
+			ball2.velocity += ball2.acceleration * deltaTime;
+
+			ball2.position += ball2.velocity * deltaTime;
+
+			if (IsCollision(Sphere{ ball2.position,ball2.radius }, plane)) {
+				Vector3 reflected = Reflect(ball2.velocity, plane.normal);
+				Vector3 projectToNormal = Project(reflected, plane.normal);
+				Vector3 movingDirection = reflected - projectToNormal;
+				ball2.velocity = projectToNormal * e + movingDirection;
+
+
+			}
 		}
 
 
@@ -1372,9 +1411,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//rotate.y += 0.05f;
 
 		//演算子オーバーロードの計算
-		Vector3 c = a + b;
+		/*Vector3 c = a + b;
 		Vector3 d = a - b;
-		Vector3 e = a * 2.4f;
+		Vector3 e = a * 2.4f;*/
 
 		Matrix4x4 rotateXMatorix = MakeRotateXMatrix(rotate.x);
 		Matrix4x4 rotateYMatorix = MakeRotateYMatrix(rotate.y);
@@ -1401,7 +1440,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//p.center.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
 			//p.center.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
 			//p.center.z = pendulum.anchor.z;
-		
+
 			ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
 			ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
 			ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
@@ -1428,22 +1467,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		ImGui::SliderFloat("Length", &conicalPendulum.length, 0.1f, 5.0f);
 		ImGui::SliderFloat("HelfApexAngle", &conicalPendulum.helfApexAngle, 0.1f, 1.569f);
-		ImGui::Checkbox("isRotate", &isRotate);
-		
+		ImGui::Checkbox("isStart", &isRotate);
+
 		ImGui::End();
 
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
 
 		//線
-		Novice::DrawLine(int(anchorScreen.x), int(anchorScreen.y), int(ballScreen.x), int(ballScreen.y), WHITE);
+		//Novice::DrawLine(int(anchorScreen.x), int(anchorScreen.y), int(ballScreen.x), int(ballScreen.y), WHITE);
+		//平面を描画
+		DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
+
 		//球用
-		DrawSphere(ball, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		//DrawSphere(ball, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		DrawSphere(Sphere{ ball2.position,ball2.radius }, worldViewProjectionMatrix, viewportMatriix, ball2.color);
 
 
 
 
-		
 
 
 		///
