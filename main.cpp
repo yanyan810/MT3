@@ -476,7 +476,7 @@ void MatrixScreenPrintf(int x, int y, const Matrix4x4& m, const char* label) {
 	Novice::ScreenPrintf(x, y + 20, "%s", label);
 	for (int row = 0; row < 4; row++) {
 		for (int column = 0; column < 4; column++) {
-			Novice::ScreenPrintf(x + column * kClownWidth, y + 40 + row * kRowHeight, "%6.02f", m.m[row][column]);
+			Novice::ScreenPrintf(x + column *2* kClownWidth, y + 40 + row * kRowHeight, "%6.03f", m.m[row][column]);
 		}
 	}
 }
@@ -484,7 +484,7 @@ void MatrixScreenPrintf(int x, int y, const Matrix4x4& m, const char* label) {
 void VectorScreenPrintf(int x, int y, const Vector3& vector, const char* label) {
 
 	Novice::ScreenPrintf(x, y, "%0.2f", vector.x);
-	Novice::ScreenPrintf(x + kClownWidth, y, "%0.2f", vector.y);
+	Novice::ScreenPrintf(x + kClownWidth, y, "%0.4f", vector.y);
 	Novice::ScreenPrintf(x + kClownWidth * 2, y, "%0.2f", vector.z);
 	Novice::ScreenPrintf(x + kClownWidth * 3, y, "%s", label);
 
@@ -1030,6 +1030,38 @@ struct Capsule {
 	float radius;
 };
 
+///==================================================
+/// ここからMT4
+///===================================================
+/// 
+/// 
+Matrix4x4 MakeIdentity4x4() {
+	Matrix4x4 mat{};
+	for (int i = 0; i < 4; ++i)
+		mat.m[i][i] = 1.0f;
+	return mat;
+}
+
+Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle) {
+
+
+	Matrix4x4 result = MakeIdentity4x4();
+	float c = cosf(angle);   // そのままラジアン
+	float s = sinf(angle);
+	float t = 1.0f - c;
+	Vector3 nAxis = Normalize(axis);
+	result.m[0][0] = t * nAxis.x * nAxis.x + c;
+	result.m[0][1] = t * nAxis.x * nAxis.y - s * nAxis.z;
+	result.m[0][2] = t * nAxis.x * nAxis.z + s * nAxis.y;
+	result.m[1][0] = t * nAxis.y * nAxis.x + s * nAxis.z;
+	result.m[1][1] = t * nAxis.y * nAxis.y + c;
+	result.m[1][2] = t * nAxis.y * nAxis.z - s * nAxis.x;
+	result.m[2][0] = t * nAxis.z * nAxis.x - s * nAxis.y;
+	result.m[2][1] = t * nAxis.z * nAxis.y + s * nAxis.x;
+	result.m[2][2] = t * nAxis.z * nAxis.z + c;
+	return result;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -1067,7 +1099,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//int sphereColor = WHITE;
 
-	int segmentColor = WHITE;
+	//int segmentColor = WHITE;
 
 	//	int triangleColor = WHITE;
 
@@ -1082,18 +1114,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 	};
 
-	//マウスの座標
-	int mouseX = 0;
-	int mouseY = 0;
+	////マウスの座標
+	//int mouseX = 0;
+	//int mouseY = 0;
 
-	int prevMouseX = 0;
-	int prevMouseY = 0;
+	//int prevMouseX = 0;
+	//int prevMouseY = 0;
 
 	//マウスの位置を中央に
 	SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
 
 	//カメラ移動の速度
-	float speed = 0.1f;
+	//float speed = 0.1f;
 
 	AABB aabb1{
 		.min{-0.5f,-0.5f,-0.5f},
@@ -1115,7 +1147,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//int cutNum = 16;
 
-	int aabbColor = WHITE;
+	//int aabbColor = WHITE;
 
 	Vector3 translates[3] = {
 		{0.2f,1.0f,0.0f},
@@ -1153,58 +1185,66 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ball.radius = 0.05f;
 	ball.color = BLUE;*/
 
-	bool isRotate = false;
+//	bool isRotate = false;
 
 	/*float angularVelocity = 3.14f;
 	float angle = 0.0f;;*/
 
-	float deltaTime = 1.0f / 60.0f;
+	//float deltaTime = 1.0f / 60.0f;
 
 
 
-	//振り子
-	Pendulum pendulum{};
-	pendulum.anchor = { 0.0f, 1.0f, 0.0f };
-	pendulum.length = 0.8f;
-	pendulum.angle = 0.7f; // 初期角度
-	pendulum.angularVelocity = 0.0f;
-	pendulum.angularAcceleration = 0.0f;
+	////振り子
+	//Pendulum pendulum{};
+	//pendulum.anchor = { 0.0f, 1.0f, 0.0f };
+	//pendulum.length = 0.8f;
+	//pendulum.angle = 0.7f; // 初期角度
+	//pendulum.angularVelocity = 0.0f;
+	//pendulum.angularAcceleration = 0.0f;
 
-	Sphere p{};
-	p.center.x = pendulum.anchor.x + sinf(pendulum.angle) * pendulum.length;
-	p.center.y = pendulum.anchor.y - cosf(pendulum.angle) * pendulum.length;
-	p.center.z = pendulum.anchor.z;
-	p.radius = 0.08f;
+	//Sphere p{};
+	//p.center.x = pendulum.anchor.x + sinf(pendulum.angle) * pendulum.length;
+	//p.center.y = pendulum.anchor.y - cosf(pendulum.angle) * pendulum.length;
+	//p.center.z = pendulum.anchor.z;
+	//p.radius = 0.08f;
 
 
-	ConicalPendulum conicalPendulum{};
-	conicalPendulum.anchor = { 0.0f, 1.0f, 0.0f };
-	conicalPendulum.length = 0.8f;
-	conicalPendulum.helfApexAngle = 0.7f; // 半頂角
-	conicalPendulum.angularVelocity = 0.0f;
-	conicalPendulum.angle = 0.0f; // 初期角度
+	//ConicalPendulum conicalPendulum{};
+	//conicalPendulum.anchor = { 0.0f, 1.0f, 0.0f };
+	//conicalPendulum.length = 0.8f;
+	//conicalPendulum.helfApexAngle = 0.7f; // 半頂角
+	//conicalPendulum.angularVelocity = 0.0f;
+	//conicalPendulum.angle = 0.0f; // 初期角度
 
-	Sphere ball{};
-	conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
+	//Sphere ball{};
+	//conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
 
-	conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
+	//conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
 
-	float radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
-	float height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
+	//float radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
+	//float height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
 
-	ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
-	ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
-	ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
-	ball.radius = 0.08f; // 球の半径
+	//ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
+	//ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
+	//ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
+	//ball.radius = 0.08f; // 球の半径
 
-	Ball ball2{};
-	ball2.position = { 1.1f, 1.2f, 0.3f };
-	ball2.acceleration = { 0.0f,-9.8f,0.0f };
-	ball2.mass = 2.0f;
-	ball2.radius = 0.05f;
-	ball2.color = WHITE;
+	//Ball ball2{};
+	//ball2.position = { 1.1f, 1.2f, 0.3f };
+	//ball2.acceleration = { 0.0f,-9.8f,0.0f };
+	//ball2.mass = 2.0f;
+	//ball2.radius = 0.05f;
+	//ball2.color = WHITE;
 
-	float e = 0.5f;
+	//float e = 0.5f;
+
+	///==================
+	/// MT4
+	///==================
+
+	Vector3 axis = Normalize({ 1.0f,1.0f,1.0f });
+	float angle = 0.44f;
+
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -1219,236 +1259,239 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
-		segmentColor = WHITE;
+		//segmentColor = WHITE;
 
-		aabbColor = WHITE;
+		//aabbColor = WHITE;
 
-		Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, cameraRotate, cameraTranslate);
-		Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
-		Matrix4x4 viewMatrix = inverse(cameraMatrix);
-		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kWindowWidth) / float(kWindowHeight), 1.0f, 100.0f);
-		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
-		Matrix4x4 viewportMatriix = MakeViewportMatrix(0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+		//Matrix4x4 worldMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, cameraRotate, cameraTranslate);
+		//Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, cameraPosition);
+		//Matrix4x4 viewMatrix = inverse(cameraMatrix);
+		//Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kWindowWidth) / float(kWindowHeight), 1.0f, 100.0f);
+		//Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+		//Matrix4x4 viewportMatriix = MakeViewportMatrix(0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
 
-		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
-		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
-		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
-		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
-		aabb1.min.z = (std::min)(aabb1.min.z, aabb1.max.z);
-		aabb1.max.z = (std::max)(aabb1.min.z, aabb1.max.z);
+		//aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
+		//aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
+		//aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
+		//aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
+		//aabb1.min.z = (std::min)(aabb1.min.z, aabb1.max.z);
+		//aabb1.max.z = (std::max)(aabb1.min.z, aabb1.max.z);
 
-		aabb2.min.x = (std::min)(aabb2.min.x, aabb2.max.x);
-		aabb2.max.x = (std::max)(aabb2.min.x, aabb2.max.x);
-		aabb2.min.y = (std::min)(aabb2.min.y, aabb2.max.y);
-		aabb2.max.y = (std::max)(aabb2.min.y, aabb2.max.y);
-		aabb2.min.z = (std::min)(aabb2.min.z, aabb2.max.z);
-		aabb2.max.z = (std::max)(aabb2.min.z, aabb2.max.z);
+		//aabb2.min.x = (std::min)(aabb2.min.x, aabb2.max.x);
+		//aabb2.max.x = (std::max)(aabb2.min.x, aabb2.max.x);
+		//aabb2.min.y = (std::min)(aabb2.min.y, aabb2.max.y);
+		//aabb2.max.y = (std::max)(aabb2.min.y, aabb2.max.y);
+		//aabb2.min.z = (std::min)(aabb2.min.z, aabb2.max.z);
+		//aabb2.max.z = (std::max)(aabb2.min.z, aabb2.max.z);
 
 
-		//============
-		//マウスの処理
-		//============
+		////============
+		////マウスの処理
+		////============
 
-		Novice::GetMousePosition(&mouseX, &mouseY);
+		//Novice::GetMousePosition(&mouseX, &mouseY);
 
-		////Rキーでマウスの位置をリセット
-		//if (keys[DIK_R]) {
-		//	SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
+		//////Rキーでマウスの位置をリセット
+		////if (keys[DIK_R]) {
+		////	SetCursorPos(kWindowWidth / 2, kWindowHeight / 2);
+		////}
+
+		//int dx = mouseX - prevMouseX;
+		//int dy = mouseY - prevMouseY;
+
+		////押している間移動
+		//if (keys[DIK_LSHIFT]) {
+		//	if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
+
+		//		cameraRotate.y += dx * 0.01f;//左右回転
+		//		cameraRotate.x += dy * 0.01f;//上下回転
+		//	}
+		//}
+		//prevMouseX = mouseX;
+		//prevMouseY = mouseY;
+
+		////===========
+		////カメラ移動
+		////===========
+
+		//if (keys[DIK_W]) {
+		//	cameraTranslate.z -= speed;
 		//}
 
-		int dx = mouseX - prevMouseX;
-		int dy = mouseY - prevMouseY;
+		//if (keys[DIK_S]) {
+		//	cameraTranslate.z += speed;
+		//}
 
-		//押している間移動
-		if (keys[DIK_LSHIFT]) {
-			if (Novice::IsPressMouse(1) || Novice::IsPressMouse(0)) {
+		//if (keys[DIK_A]) {
+		//	cameraTranslate.x += speed;
+		//}
 
-				cameraRotate.y += dx * 0.01f;//左右回転
-				cameraRotate.x += dy * 0.01f;//上下回転
-			}
-		}
-		prevMouseX = mouseX;
-		prevMouseY = mouseY;
+		//if (keys[DIK_D]) {
+		//	cameraTranslate.x -= speed;
+		//}
 
-		//===========
-		//カメラ移動
-		//===========
+		//if (keys[DIK_UP]) {
+		//	cameraTranslate.y -= speed;
+		//}
+		//if (keys[DIK_DOWN]) {
+		//	cameraTranslate.y += speed;
+		//}
 
-		if (keys[DIK_W]) {
-			cameraTranslate.z -= speed;
-		}
+		////当たり判定
+		///*if (IsCollision(sphere, sphere2)) {
+		//	sphereColor = RED;
+		//} else {
+		//	sphereColor = WHITE;
+		//}*/
 
-		if (keys[DIK_S]) {
-			cameraTranslate.z += speed;
-		}
+		///*	if (IsCollision(sphere, plane)) {
+		//		sphereColor = RED;
+		//	} else {
+		//		sphereColor = WHITE;
+		//	}*/
 
-		if (keys[DIK_A]) {
-			cameraTranslate.x += speed;
-		}
+		//	/*	if (IsCollision(segment, plane)) {
+		//			segmentColor = RED;
+		//		} else {
+		//			segmentColor = WHITE;
+		//		}*/
 
-		if (keys[DIK_D]) {
-			cameraTranslate.x -= speed;
-		}
+		//		/*	if (IsCollision(segment, plane)) {
+		//				triangleColor = RED;
+		//			} else {
+		//				triangleColor = WHITE;
+		//			}*/
 
-		if (keys[DIK_UP]) {
-			cameraTranslate.y -= speed;
-		}
-		if (keys[DIK_DOWN]) {
-			cameraTranslate.y += speed;
-		}
+		//			/*	if (IsCollision(triangle, segment)) {
+		//					triangleColor = RED;
+		//				} else {
+		//					triangleColor = WHITE;
+		//				}*/
 
-		//当たり判定
-		/*if (IsCollision(sphere, sphere2)) {
-			sphereColor = RED;
-		} else {
-			sphereColor = WHITE;
-		}*/
+		//				/*if (IsCollision(aabb1, aabb2)) {
+		//					aabbColor = RED;
+		//				}*/
 
-		/*	if (IsCollision(sphere, plane)) {
-				sphereColor = RED;
-			} else {
-				sphereColor = WHITE;
-			}*/
+		//				/*if (IsCollision(aabb1, sphere)) {
+		//					aabbColor = RED;
+		//				}*/
 
-			/*	if (IsCollision(segment, plane)) {
-					segmentColor = RED;
-				} else {
-					segmentColor = WHITE;
-				}*/
+		//if (isRotate) {
 
-				/*	if (IsCollision(segment, plane)) {
-						triangleColor = RED;
-					} else {
-						triangleColor = WHITE;
-					}*/
+		//	ball2.velocity += ball2.acceleration * deltaTime;
 
-					/*	if (IsCollision(triangle, segment)) {
-							triangleColor = RED;
-						} else {
-							triangleColor = WHITE;
-						}*/
+		//	ball2.position += ball2.velocity * deltaTime;
 
-						/*if (IsCollision(aabb1, aabb2)) {
-							aabbColor = RED;
-						}*/
-
-						/*if (IsCollision(aabb1, sphere)) {
-							aabbColor = RED;
-						}*/
-
-		if (isRotate) {
-
-			ball2.velocity += ball2.acceleration * deltaTime;
-
-			ball2.position += ball2.velocity * deltaTime;
-
-			if (IsCollision(Sphere{ ball2.position,ball2.radius }, plane)) {
-				Vector3 reflected = Reflect(ball2.velocity, plane.normal);
-				Vector3 projectToNormal = Project(reflected, plane.normal);
-				Vector3 movingDirection = reflected - projectToNormal;
-				ball2.velocity = projectToNormal * e + movingDirection;
+		//	if (IsCollision(Sphere{ ball2.position,ball2.radius }, plane)) {
+		//		Vector3 reflected = Reflect(ball2.velocity, plane.normal);
+		//		Vector3 projectToNormal = Project(reflected, plane.normal);
+		//		Vector3 movingDirection = reflected - projectToNormal;
+		//		ball2.velocity = projectToNormal * e + movingDirection;
 
 
-			}
-		}
+		//	}
+		//}
 
 
-		Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
-		Vector3 closestPoint = ClosestPoint(point, segment);
+		//Vector3  project = Project(Subtract(point, segment.origin), segment.diff);
+		//Vector3 closestPoint = ClosestPoint(point, segment);
 
 
-		Sphere pointSphere{ point,0.01f };
-		Sphere closestPointSphere{ closestPoint,0.01f };
+		//Sphere pointSphere{ point,0.01f };
+		//Sphere closestPointSphere{ closestPoint,0.01f };
 
-		Vector3 start = Transform(Transform(segment.origin, worldViewProjectionMatrix), viewportMatriix);
-		Vector3 end = Transform(Transform(VectorAdd(segment.origin, segment.diff), worldViewProjectionMatrix), viewportMatriix);
+		//Vector3 start = Transform(Transform(segment.origin, worldViewProjectionMatrix), viewportMatriix);
+		//Vector3 end = Transform(Transform(VectorAdd(segment.origin, segment.diff), worldViewProjectionMatrix), viewportMatriix);
 
-		///===========================
-		///階層構造を構築する
-		///===========================
+		/////===========================
+		/////階層構造を構築する
+		/////===========================
 
-		Matrix4x4 localShoilder = MakeAffineMatrix(scales[0], rotates[0], translates[0]);
+		//Matrix4x4 localShoilder = MakeAffineMatrix(scales[0], rotates[0], translates[0]);
 
-		Matrix4x4 localElbow = MakeAffineMatrix(scales[1], rotates[1], translates[1]);
+		//Matrix4x4 localElbow = MakeAffineMatrix(scales[1], rotates[1], translates[1]);
 
-		Matrix4x4 localHand = MakeAffineMatrix(scales[2], rotates[2], translates[2]);
+		//Matrix4x4 localHand = MakeAffineMatrix(scales[2], rotates[2], translates[2]);
 
-		Matrix4x4 worldShoilder = localShoilder;
+		//Matrix4x4 worldShoilder = localShoilder;
 
-		Matrix4x4 worldElbow = Multiply(localElbow, localShoilder);
+		//Matrix4x4 worldElbow = Multiply(localElbow, localShoilder);
 
-		Matrix4x4 worldHand = Multiply(localHand, Multiply(localElbow, localShoilder));
+		//Matrix4x4 worldHand = Multiply(localHand, Multiply(localElbow, localShoilder));
 
-		Vector3 sholderPosScreen = Transform(Transform({ worldShoilder.m[3][0], worldShoilder.m[3][1], worldShoilder.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
+		//Vector3 sholderPosScreen = Transform(Transform({ worldShoilder.m[3][0], worldShoilder.m[3][1], worldShoilder.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
 
-		Vector3 elbowPosScreen = Transform(Transform({ worldElbow.m[3][0], worldElbow.m[3][1], worldElbow.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
+		//Vector3 elbowPosScreen = Transform(Transform({ worldElbow.m[3][0], worldElbow.m[3][1], worldElbow.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
 
-		Vector3 handPosScreen = Transform(Transform({ worldHand.m[3][0], worldHand.m[3][1], worldHand.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
-		/*Vector3 screenVertices[3];
-		for (uint32_t i = 0; i < 3; i++) {
-			Vector3 ndcVertex = Transform(kLocalVertices[i], worldViewProjectionMatrix);
-			screenVertices[i] = Transform(ndcVertex, viewportMatriix);
-		}*/
+		//Vector3 handPosScreen = Transform(Transform({ worldHand.m[3][0], worldHand.m[3][1], worldHand.m[3][2] }, worldViewProjectionMatrix), viewportMatriix);
+		///*Vector3 screenVertices[3];
+		//for (uint32_t i = 0; i < 3; i++) {
+		//	Vector3 ndcVertex = Transform(kLocalVertices[i], worldViewProjectionMatrix);
+		//	screenVertices[i] = Transform(ndcVertex, viewportMatriix);
+		//}*/
 
-		/*if (keys[DIK_W]) {
-			cameraTranslate.z -= 0.1f;
-		}
+		///*if (keys[DIK_W]) {
+		//	cameraTranslate.z -= 0.1f;
+		//}
 
-		if (keys[DIK_S]) {
-			cameraTranslate.z += 0.1f;
-		}
+		//if (keys[DIK_S]) {
+		//	cameraTranslate.z += 0.1f;
+		//}
 
-		if (keys[DIK_A]) {
-			cameraTranslate.x = 0.1f;
+		//if (keys[DIK_A]) {
+		//	cameraTranslate.x = 0.1f;
 
-		}
+		//}
 
-		if (keys[DIK_D]) {
-			cameraTranslate.x -= 0.1f;
+		//if (keys[DIK_D]) {
+		//	cameraTranslate.x -= 0.1f;
 
-		}*/
+		//}*/
 
-		//rotate.y += 0.05f;
+		////rotate.y += 0.05f;
 
-		//演算子オーバーロードの計算
-		/*Vector3 c = a + b;
-		Vector3 d = a - b;
-		Vector3 e = a * 2.4f;*/
+		////演算子オーバーロードの計算
+		///*Vector3 c = a + b;
+		//Vector3 d = a - b;
+		//Vector3 e = a * 2.4f;*/
 
-		Matrix4x4 rotateXMatorix = MakeRotateXMatrix(rotate.x);
-		Matrix4x4 rotateYMatorix = MakeRotateYMatrix(rotate.y);
-		Matrix4x4 rotateZMatorix = MakeRotateZMatrix(rotate.z);
-		Matrix4x4 rotateMatrix = rotateXMatorix * rotateYMatorix * rotateZMatorix;
+		//Matrix4x4 rotateXMatorix = MakeRotateXMatrix(rotate.x);
+		//Matrix4x4 rotateYMatorix = MakeRotateYMatrix(rotate.y);
+		//Matrix4x4 rotateZMatorix = MakeRotateZMatrix(rotate.z);
+		//Matrix4x4 rotateMatrix = rotateXMatorix * rotateYMatorix * rotateZMatorix;
 
-		//===============
-		//振り子を作る
-		//===============
+		////===============
+		////振り子を作る
+		////===============
 
-		conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
+		//conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
 
-		conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
+		//conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
 
-		radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
-		height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
+		//radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
+		//height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
 
-		if (isRotate) {
-			//pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
-			//pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
-			//pendulum.angle += pendulum.angularVelocity * deltaTime;
+		//if (isRotate) {
+		//	//pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
+		//	//pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
+		//	//pendulum.angle += pendulum.angularVelocity * deltaTime;
 
-			//// 振り子の位置を計算
-			//p.center.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
-			//p.center.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
-			//p.center.z = pendulum.anchor.z;
+		//	//// 振り子の位置を計算
+		//	//p.center.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
+		//	//p.center.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
+		//	//p.center.z = pendulum.anchor.z;
 
-			ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
-			ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
-			ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
+		//	ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
+		//	ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
+		//	ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
 
-		}
+		//}
 
-		Vector3 anchorScreen = Transform(Transform(conicalPendulum.anchor, worldViewProjectionMatrix), viewportMatriix);
-		Vector3 ballScreen = Transform(Transform(ball.center, worldViewProjectionMatrix), viewportMatriix);
+		//Vector3 anchorScreen = Transform(Transform(conicalPendulum.anchor, worldViewProjectionMatrix), viewportMatriix);
+		//Vector3 ballScreen = Transform(Transform(ball.center, worldViewProjectionMatrix), viewportMatriix);
+		
+Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
+
 		///
 		/// ↑更新処理ここまで
 		///
@@ -1457,33 +1500,33 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓描画処理ここから
 		///
 
-		//VectorScreenPrintf(0, 0, cross, "Cross");
+		////VectorScreenPrintf(0, 0, cross, "Cross");
 
-		ImGui::Begin("Window");
-		if (ImGui::CollapsingHeader("Camera")) {
-			ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
-			ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-		}
+		//ImGui::Begin("Window");
+		//if (ImGui::CollapsingHeader("Camera")) {
+		//	ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
+		//	ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
+		//}
 
-		ImGui::SliderFloat("Length", &conicalPendulum.length, 0.1f, 5.0f);
-		ImGui::SliderFloat("HelfApexAngle", &conicalPendulum.helfApexAngle, 0.1f, 1.569f);
-		ImGui::Checkbox("isStart", &isRotate);
+		//ImGui::SliderFloat("Length", &conicalPendulum.length, 0.1f, 5.0f);
+		//ImGui::SliderFloat("HelfApexAngle", &conicalPendulum.helfApexAngle, 0.1f, 1.569f);
+		//ImGui::Checkbox("isStart", &isRotate);
 
-		ImGui::End();
-
-
-		DrawGrid(worldViewProjectionMatrix, viewportMatriix);
-
-		//線
-		//Novice::DrawLine(int(anchorScreen.x), int(anchorScreen.y), int(ballScreen.x), int(ballScreen.y), WHITE);
-		//平面を描画
-		DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
-
-		//球用
-		//DrawSphere(ball, worldViewProjectionMatrix, viewportMatriix, WHITE);
-		DrawSphere(Sphere{ ball2.position,ball2.radius }, worldViewProjectionMatrix, viewportMatriix, ball2.color);
+		//ImGui::End();
 
 
+		//DrawGrid(worldViewProjectionMatrix, viewportMatriix);
+
+		////線
+		////Novice::DrawLine(int(anchorScreen.x), int(anchorScreen.y), int(ballScreen.x), int(ballScreen.y), WHITE);
+		////平面を描画
+		//DrawPlane(plane, worldViewProjectionMatrix, viewportMatriix, WHITE);
+
+		////球用
+		////DrawSphere(ball, worldViewProjectionMatrix, viewportMatriix, WHITE);
+		//DrawSphere(Sphere{ ball2.position,ball2.radius }, worldViewProjectionMatrix, viewportMatriix, ball2.color);
+
+MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
 
 
 
