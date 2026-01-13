@@ -1576,14 +1576,14 @@ Matrix4x4 rotateMatrix0 = DirectionToDirection(
 Matrix4x4 rotateMatrix1 = DirectionToDirection(from0, to0);
 Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
 
-VectorScreenPrintf(0, 300, from0, "from0");
-VectorScreenPrintf(0, 320, to0, "to0");
-
-float d = Dot(from0, to0);
-Novice::ScreenPrintf(0, 340, "Dot(from0,to0) = %.6f", d);
-
-Vector3 cr = Cross(from0, to0);
-Novice::ScreenPrintf(0, 360, "CrossLen(from0,to0) = %.6f", Length(cr));
+//VectorScreenPrintf(0, 300, from0, "from0");
+//VectorScreenPrintf(0, 320, to0, "to0");
+//
+//float d = Dot(from0, to0);
+//Novice::ScreenPrintf(0, 340, "Dot(from0,to0) = %.6f", d);
+//
+//Vector3 cr = Cross(from0, to0);
+//Novice::ScreenPrintf(0, 360, "CrossLen(from0,to0) = %.6f", Length(cr));
 
 MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
 MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
