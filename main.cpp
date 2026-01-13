@@ -924,6 +924,8 @@ inline Sphere MakeSphereFromMatrix(const Matrix4x4& m, float r)
 	return { { m.m[3][0], m.m[3][1], m.m[3][2] }, r };
 }
 
+
+
 //=======================
 //二項演算子
 //=======================
@@ -1061,6 +1063,43 @@ Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle) {
 	result.m[2][2] = t * nAxis.z * nAxis.z + c;
 	return result;
 }
+
+float Dot(const Vector3& a, const Vector3& b) {
+	return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to)
+{
+	Vector3 f = Normalize(from);
+	Vector3 t = Normalize(to);
+
+	float cosTheta = Dot(f, t);
+	cosTheta = std::clamp(cosTheta, -1.0f, 1.0f);
+
+	Vector3 axisRaw = Cross(f, t);
+	float axisLen = Length(axisRaw);
+
+	// 平行 or 反平行
+	if (axisLen < 1e-6f) {
+		// 同方向
+		if (cosTheta > 0.0f) {
+			return MakeIdentity4x4();
+		}
+
+		// 反対方向（180度）：from に直交する軸を作る（※ここが超重要）
+		// ★スライドのrotateMatrix0を合わせたいので ref は Z優先（from=(1,0,0) なら axis が Y になる）
+		Vector3 ref = (fabsf(f.z) < 0.9f) ? Vector3{ 0,0,1 } : Vector3{ 0,1,0 };
+		Vector3 axis = Normalize(Cross(f, ref));
+
+		return MakeRotateAxisAngle(axis, float(M_PI));
+	}
+
+	Vector3 axis = axisRaw / axisLen;
+	float angle = std::acos(cosTheta);
+	return MakeRotateAxisAngle(axis, angle);
+}
+
+
+
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -1242,8 +1281,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	/// MT4
 	///==================
 
-	Vector3 axis = Normalize({ 1.0f,1.0f,1.0f });
-	float angle = 0.44f;
+	//Vector3 axis = Normalize({ 1.0f,1.0f,1.0f });
+	//float angle = 0.44f;
 
 
 	// ウィンドウの×ボタンが押されるまでループ
@@ -1490,7 +1529,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//Vector3 anchorScreen = Transform(Transform(conicalPendulum.anchor, worldViewProjectionMatrix), viewportMatriix);
 		//Vector3 ballScreen = Transform(Transform(ball.center, worldViewProjectionMatrix), viewportMatriix);
 		
-Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
+//Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
 
 		///
 		/// ↑更新処理ここまで
@@ -1526,12 +1565,30 @@ Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
 		////DrawSphere(ball, worldViewProjectionMatrix, viewportMatriix, WHITE);
 		//DrawSphere(Sphere{ ball2.position,ball2.radius }, worldViewProjectionMatrix, viewportMatriix, ball2.color);
 
-MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
+//MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
 
+Vector3 from0 = Normalize(Vector3{ 1.0f,0.7f,0.5f });
+Vector3 to0 = -from0;
+Vector3 from1 = Normalize(Vector3{ -0.6f,0.9f,0.2f });
+Vector3 to1 = Normalize(Vector3{ 0.4f,0.7f,-0.5f });
+Matrix4x4 rotateMatrix0 = DirectionToDirection(
+	Normalize(Vector3{ 1.0f,0.0f,0.0f }), Normalize(Vector3{ -1.0f, 0.0f, 0.0f }));
+Matrix4x4 rotateMatrix1 = DirectionToDirection(from0, to0);
+Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
 
+VectorScreenPrintf(0, 300, from0, "from0");
+VectorScreenPrintf(0, 320, to0, "to0");
 
+float d = Dot(from0, to0);
+Novice::ScreenPrintf(0, 340, "Dot(from0,to0) = %.6f", d);
 
-		///
+Vector3 cr = Cross(from0, to0);
+Novice::ScreenPrintf(0, 360, "CrossLen(from0,to0) = %.6f", Length(cr));
+
+MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
+MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
+MatrixScreenPrintf(0, kRowHeight*10, rotateMatrix2, "rotateMatrix2");
+		
 		/// ↑描画処理ここまで
 		///
 
