@@ -27,6 +27,14 @@ typedef struct Matrix4x4 {
 	float m[4][4];
 }Matrix4x4;
 
+struct Quaternion {
+	float x;
+	float y;
+	float z;
+	float w;
+};
+
+
 struct Sphere {
 	Vector3 center;//!中心点
 	float radius; //!<半径
@@ -1098,7 +1106,59 @@ Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to)
 	return MakeRotateAxisAngle(axis, angle);
 }
 
+// --------------------
+// Quaternion functions
+// --------------------
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
+{
+	// Hamilton product (x,y,z,w)
+	Quaternion out{};
+	out.x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
+	out.y = lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x;
+	out.z = lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w;
+	out.w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
+	return out;
+}
 
+Quaternion IdentityQuaternion()
+{
+	return { 0.0f, 0.0f, 0.0f, 1.0f };
+}
+
+Quaternion Conjugate(const Quaternion& q)
+{
+	return { -q.x, -q.y, -q.z, q.w };
+}
+
+float Norm(const Quaternion& q)
+{
+	return std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+}
+
+Quaternion Normalize(const Quaternion& q)
+{
+	float n = Norm(q);
+	assert(n > 1e-6f);
+	float inv = 1.0f / n;
+	return { q.x * inv, q.y * inv, q.z * inv, q.w * inv };
+}
+
+Quaternion Inverse(const Quaternion& q)
+{
+	// inv(q) = conjugate(q) / |q|^2
+	float n = Norm(q);
+	assert(n > 1e-6f);
+	float invN2 = 1.0f / (n * n);
+
+	Quaternion c = Conjugate(q);
+	return { c.x * invN2, c.y * invN2, c.z * invN2, c.w * invN2 };
+}
+
+void QuaternionScreenPrintf(int x, int y, const Quaternion& q, const char* label)
+{
+	Novice::ScreenPrintf(x, y, "%6.02f %6.02f %6.02f %6.02f : %s",
+		q.x, q.y, q.z, q.w, label);
+}
 
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -1142,9 +1202,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//	int triangleColor = WHITE;
 
-	Plane plane;
-	plane.normal = Normalize({ -0.5f,1.5f,-0.5f });
-	plane.distance = 0.0f;
+	/*Plane plane;
+	plane.normal = Vector3::Normalize({ -0.5f,1.5f,-0.5f });
+	plane.distance = 0.0f;*/
 
 	Triangle triangle = { {
 		{-1.0f,0.0f,0.0f},
@@ -1567,14 +1627,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 //MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
 
-Vector3 from0 = Normalize(Vector3{ 1.0f,0.7f,0.5f });
-Vector3 to0 = -from0;
-Vector3 from1 = Normalize(Vector3{ -0.6f,0.9f,0.2f });
-Vector3 to1 = Normalize(Vector3{ 0.4f,0.7f,-0.5f });
-Matrix4x4 rotateMatrix0 = DirectionToDirection(
-	Normalize(Vector3{ 1.0f,0.0f,0.0f }), Normalize(Vector3{ -1.0f, 0.0f, 0.0f }));
-Matrix4x4 rotateMatrix1 = DirectionToDirection(from0, to0);
-Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
+//Vector3 from0 = Normalize(Vector3{ 1.0f,0.7f,0.5f });
+//Vector3 to0 = -from0;
+//Vector3 from1 = Normalize(Vector3{ -0.6f,0.9f,0.2f });
+//Vector3 to1 = Normalize(Vector3{ 0.4f,0.7f,-0.5f });
+//Matrix4x4 rotateMatrix0 = DirectionToDirection(
+//	Normalize(Vector3{ 1.0f,0.0f,0.0f }), Normalize(Vector3{ -1.0f, 0.0f, 0.0f }));
+//Matrix4x4 rotateMatrix1 = DirectionToDirection(from0, to0);
+//Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
 
 //VectorScreenPrintf(0, 300, from0, "from0");
 //VectorScreenPrintf(0, 320, to0, "to0");
@@ -1585,10 +1645,31 @@ Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
 //Vector3 cr = Cross(from0, to0);
 //Novice::ScreenPrintf(0, 360, "CrossLen(from0,to0) = %.6f", Length(cr));
 
-MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
-MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
-MatrixScreenPrintf(0, kRowHeight*10, rotateMatrix2, "rotateMatrix2");
-		
+//MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
+//MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
+//MatrixScreenPrintf(0, kRowHeight*10, rotateMatrix2, "rotateMatrix2");
+
+Quaternion q1 = { 2.0f, 3.0f, 4.0f, 1.0f };
+Quaternion q2 = { 1.0f, 3.0f, 5.0f, 2.0f };
+
+Quaternion identity = IdentityQuaternion();
+Quaternion conj = Conjugate(q1);
+Quaternion inv = Inverse(q1);
+Quaternion normal = Normalize(q1);
+Quaternion mul1 = Multiply(q1, q2);
+Quaternion mul2 = Multiply(q2, q1);
+float norm = Norm(q1);
+
+int y0 = 0;
+QuaternionScreenPrintf(0, y0 + 0 * kRowHeight, identity, "Identity");
+QuaternionScreenPrintf(0, y0 + 1 * kRowHeight, conj, "Conjugate");
+QuaternionScreenPrintf(0, y0 + 2 * kRowHeight, inv, "Inverse");
+QuaternionScreenPrintf(0, y0 + 3 * kRowHeight, normal, "Normalize");
+QuaternionScreenPrintf(0, y0 + 4 * kRowHeight, mul1, "Multiply(q1, q2)");
+QuaternionScreenPrintf(0, y0 + 5 * kRowHeight, mul2, "Multiply(q2, q1)");
+Novice::ScreenPrintf(0, y0 + 6 * kRowHeight, "%6.02f : Norm", norm);
+
+
 		/// ↑描画処理ここまで
 		///
 
