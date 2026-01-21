@@ -1220,7 +1220,7 @@ Quaternion Negate(const Quaternion& q) {
 	return { -q.x, -q.y, -q.z, -q.w };
 }
 
-// （保険）線形補間 → 正規化（dotがほぼ1のとき用）
+// 線形補間 → 正規化（dotがほぼ1のとき用）
 Quaternion Nlerp(const Quaternion& q0, const Quaternion& q1, float t) {
 	Quaternion a = Multiply(1.0f - t, q0);
 	Quaternion b = Multiply(t, q1);
