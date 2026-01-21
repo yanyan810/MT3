@@ -484,7 +484,7 @@ void MatrixScreenPrintf(int x, int y, const Matrix4x4& m, const char* label) {
 	Novice::ScreenPrintf(x, y + 20, "%s", label);
 	for (int row = 0; row < 4; row++) {
 		for (int column = 0; column < 4; column++) {
-			Novice::ScreenPrintf(x + column *2* kClownWidth, y + 40 + row * kRowHeight, "%6.03f", m.m[row][column]);
+			Novice::ScreenPrintf(x + column * 2 * kClownWidth, y + 40 + row * kRowHeight, "%6.03f", m.m[row][column]);
 		}
 	}
 }
@@ -722,8 +722,7 @@ void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjMatrix, const Matrix4x4
 static Vector3 EvaluateQuadraticBezier(const Vector3& p0,
 	const Vector3& p1,
 	const Vector3& p2,
-	float t)
-{
+	float t) {
 	/* 1回目の補間 */
 	Vector3 a = Lerp(p0, p1, t);   // A(t)
 	Vector3 b = Lerp(p1, p2, t);   // B(t)
@@ -895,8 +894,7 @@ bool IsCollision(const AABB& aabb, const Sphere& sphere) {
 }
 
 //AABBと線分の衝突判定
-bool IsCollision(const AABB& aabb, const Segment& seg)
-{
+bool IsCollision(const AABB& aabb, const Segment& seg) {
 	// 方向ベクトル
 	Vector3 dir = seg.diff;
 
@@ -927,8 +925,7 @@ bool IsCollision(const AABB& aabb, const Segment& seg)
 	return (tMax >= 0.0f && tMin <= 1.0f);
 }
 
-inline Sphere MakeSphereFromMatrix(const Matrix4x4& m, float r)
-{
+inline Sphere MakeSphereFromMatrix(const Matrix4x4& m, float r) {
 	return { { m.m[3][0], m.m[3][1], m.m[3][2] }, r };
 }
 
@@ -1075,8 +1072,7 @@ Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle) {
 float Dot(const Vector3& a, const Vector3& b) {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to)
-{
+Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to) {
 	Vector3 f = Normalize(from);
 	Vector3 t = Normalize(to);
 
@@ -1109,8 +1105,7 @@ Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to)
 // --------------------
 // Quaternion functions
 // --------------------
-Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
-{
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs) {
 	// Hamilton product (x,y,z,w)
 	Quaternion out{};
 	out.x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
@@ -1120,31 +1115,26 @@ Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
 	return out;
 }
 
-Quaternion IdentityQuaternion()
-{
+Quaternion IdentityQuaternion() {
 	return { 0.0f, 0.0f, 0.0f, 1.0f };
 }
 
-Quaternion Conjugate(const Quaternion& q)
-{
+Quaternion Conjugate(const Quaternion& q) {
 	return { -q.x, -q.y, -q.z, q.w };
 }
 
-float Norm(const Quaternion& q)
-{
+float Norm(const Quaternion& q) {
 	return std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 }
 
-Quaternion Normalize(const Quaternion& q)
-{
+Quaternion Normalize(const Quaternion& q) {
 	float n = Norm(q);
 	assert(n > 1e-6f);
 	float inv = 1.0f / n;
 	return { q.x * inv, q.y * inv, q.z * inv, q.w * inv };
 }
 
-Quaternion Inverse(const Quaternion& q)
-{
+Quaternion Inverse(const Quaternion& q) {
 	// inv(q) = conjugate(q) / |q|^2
 	float n = Norm(q);
 	assert(n > 1e-6f);
@@ -1154,8 +1144,7 @@ Quaternion Inverse(const Quaternion& q)
 	return { c.x * invN2, c.y * invN2, c.z * invN2, c.w * invN2 };
 }
 
-void QuaternionScreenPrintf(int x, int y, const Quaternion& q, const char* label)
-{
+void QuaternionScreenPrintf(int x, int y, const Quaternion& q, const char* label) {
 	Novice::ScreenPrintf(x, y, "%6.02f %6.02f %6.02f %6.02f : %s",
 		q.x, q.y, q.z, q.w, label);
 }
@@ -1163,8 +1152,7 @@ void QuaternionScreenPrintf(int x, int y, const Quaternion& q, const char* label
 // --------------------
 // MT4 required functions
 // --------------------
-Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle)
-{
+Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle) {
 	// axis は必ず正規化（スライドにも「軸の正規化を忘れずに」ってある）
 	Vector3 n = Normalize(axis);
 
@@ -1181,8 +1169,7 @@ Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle)
 	return q;
 }
 
-Vector3 RotateVector(const Vector3& v, const Quaternion& qRaw)
-{
+Vector3 RotateVector(const Vector3& v, const Quaternion& qRaw) {
 	// 回転に使うqは単位Quaternion前提
 	Quaternion q = Normalize(qRaw);
 
@@ -1196,8 +1183,7 @@ Vector3 RotateVector(const Vector3& v, const Quaternion& qRaw)
 	return { r.x, r.y, r.z };
 }
 
-Matrix4x4 MakeRotateMatrix(const Quaternion& qRaw)
-{
+Matrix4x4 MakeRotateMatrix(const Quaternion& qRaw) {
 	Quaternion q = Normalize(qRaw);
 
 	Vector3 ex = RotateVector({ 1.0f, 0.0f, 0.0f }, q);
@@ -1214,6 +1200,69 @@ Matrix4x4 MakeRotateMatrix(const Quaternion& qRaw)
 	return m;
 }
 
+// Quaternion の内積（dot）
+float Dot(const Quaternion& a, const Quaternion& b) {
+	return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+}
+
+// Quaternion のスカラー倍
+Quaternion Multiply(float s, const Quaternion& q) {
+	return { q.x * s, q.y * s, q.z * s, q.w * s };
+}
+
+// Quaternion の加算
+Quaternion Add(const Quaternion& a, const Quaternion& b) {
+	return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+}
+
+// Quaternion の符号反転（-q）
+Quaternion Negate(const Quaternion& q) {
+	return { -q.x, -q.y, -q.z, -q.w };
+}
+
+// 線形補間 → 正規化（dotがほぼ1のとき用）
+Quaternion Nlerp(const Quaternion& q0, const Quaternion& q1, float t) {
+	Quaternion a = Multiply(1.0f - t, q0);
+	Quaternion b = Multiply(t, q1);
+	return Normalize(Add(a, b));
+}
+
+// --------------------
+// Slerp（球面線形補間）
+// --------------------
+Quaternion Slerp(const Quaternion& q0Raw, const Quaternion& q1Raw, float t) {
+	// スライド前提：q0,q1 は単位Quaternion（念のため正規化）
+	Quaternion q0 = Normalize(q0Raw);
+	Quaternion q1 = Normalize(q1Raw);
+
+	// 内積（cos）
+	float dot = Dot(q0, q1);
+
+	// 逆回転側を選ばないように（最短経路）
+	if (dot < 0.0f) {
+		q1 = Negate(q1);
+		dot = -dot;
+	}
+
+	// ほぼ同じ向きなら、数値不安定なので線形補間でOK（スライドの注意点対策）
+	dot = std::clamp(dot, -1.0f, 1.0f);
+	if (dot > 0.9995f) {
+		return Nlerp(q0, q1, t);
+	}
+
+	// 角度 theta
+	float theta = std::acos(dot);
+
+	// scale を sin で作る
+	float sinTheta = std::sin(theta);
+	float scale0 = std::sin((1.0f - t) * theta) / sinTheta;
+	float scale1 = std::sin(t * theta) / sinTheta;
+
+	// それぞれの係数で混ぜる
+	Quaternion a = Multiply(scale0, q0);
+	Quaternion b = Multiply(scale1, q1);
+	return Add(a, b); // 理論上は単位長（ただし誤差はあり得る）
+}
 
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -1339,68 +1388,68 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ball.radius = 0.05f;
 	ball.color = BLUE;*/
 
-//	bool isRotate = false;
+	//	bool isRotate = false;
 
-	/*float angularVelocity = 3.14f;
-	float angle = 0.0f;;*/
+		/*float angularVelocity = 3.14f;
+		float angle = 0.0f;;*/
 
-	//float deltaTime = 1.0f / 60.0f;
-
-
-
-	////振り子
-	//Pendulum pendulum{};
-	//pendulum.anchor = { 0.0f, 1.0f, 0.0f };
-	//pendulum.length = 0.8f;
-	//pendulum.angle = 0.7f; // 初期角度
-	//pendulum.angularVelocity = 0.0f;
-	//pendulum.angularAcceleration = 0.0f;
-
-	//Sphere p{};
-	//p.center.x = pendulum.anchor.x + sinf(pendulum.angle) * pendulum.length;
-	//p.center.y = pendulum.anchor.y - cosf(pendulum.angle) * pendulum.length;
-	//p.center.z = pendulum.anchor.z;
-	//p.radius = 0.08f;
+		//float deltaTime = 1.0f / 60.0f;
 
 
-	//ConicalPendulum conicalPendulum{};
-	//conicalPendulum.anchor = { 0.0f, 1.0f, 0.0f };
-	//conicalPendulum.length = 0.8f;
-	//conicalPendulum.helfApexAngle = 0.7f; // 半頂角
-	//conicalPendulum.angularVelocity = 0.0f;
-	//conicalPendulum.angle = 0.0f; // 初期角度
 
-	//Sphere ball{};
-	//conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
+		////振り子
+		//Pendulum pendulum{};
+		//pendulum.anchor = { 0.0f, 1.0f, 0.0f };
+		//pendulum.length = 0.8f;
+		//pendulum.angle = 0.7f; // 初期角度
+		//pendulum.angularVelocity = 0.0f;
+		//pendulum.angularAcceleration = 0.0f;
 
-	//conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
-
-	//float radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
-	//float height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
-
-	//ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
-	//ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
-	//ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
-	//ball.radius = 0.08f; // 球の半径
-
-	//Ball ball2{};
-	//ball2.position = { 1.1f, 1.2f, 0.3f };
-	//ball2.acceleration = { 0.0f,-9.8f,0.0f };
-	//ball2.mass = 2.0f;
-	//ball2.radius = 0.05f;
-	//ball2.color = WHITE;
-
-	//float e = 0.5f;
-
-	///==================
-	/// MT4
-	///==================
-
-	//Vector3 axis = Normalize({ 1.0f,1.0f,1.0f });
-	//float angle = 0.44f;
+		//Sphere p{};
+		//p.center.x = pendulum.anchor.x + sinf(pendulum.angle) * pendulum.length;
+		//p.center.y = pendulum.anchor.y - cosf(pendulum.angle) * pendulum.length;
+		//p.center.z = pendulum.anchor.z;
+		//p.radius = 0.08f;
 
 
-	// ウィンドウの×ボタンが押されるまでループ
+		//ConicalPendulum conicalPendulum{};
+		//conicalPendulum.anchor = { 0.0f, 1.0f, 0.0f };
+		//conicalPendulum.length = 0.8f;
+		//conicalPendulum.helfApexAngle = 0.7f; // 半頂角
+		//conicalPendulum.angularVelocity = 0.0f;
+		//conicalPendulum.angle = 0.0f; // 初期角度
+
+		//Sphere ball{};
+		//conicalPendulum.angularVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.helfApexAngle))); // 角速度を更新
+
+		//conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime; // 角度を更新
+
+		//float radius = std::sin(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 半径を計算
+		//float height = std::cos(conicalPendulum.helfApexAngle) * conicalPendulum.length; // 高さを計算
+
+		//ball.center.x = conicalPendulum.anchor.x + radius * std::cos(conicalPendulum.angle);
+		//ball.center.y = conicalPendulum.anchor.y - height; // 上方向は負
+		//ball.center.z = conicalPendulum.anchor.z + radius * std::sin(conicalPendulum.angle);
+		//ball.radius = 0.08f; // 球の半径
+
+		//Ball ball2{};
+		//ball2.position = { 1.1f, 1.2f, 0.3f };
+		//ball2.acceleration = { 0.0f,-9.8f,0.0f };
+		//ball2.mass = 2.0f;
+		//ball2.radius = 0.05f;
+		//ball2.color = WHITE;
+
+		//float e = 0.5f;
+
+		///==================
+		/// MT4
+		///==================
+
+		//Vector3 axis = Normalize({ 1.0f,1.0f,1.0f });
+		//float angle = 0.44f;
+
+
+		// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
 		Novice::BeginFrame();
@@ -1643,7 +1692,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		//Vector3 anchorScreen = Transform(Transform(conicalPendulum.anchor, worldViewProjectionMatrix), viewportMatriix);
 		//Vector3 ballScreen = Transform(Transform(ball.center, worldViewProjectionMatrix), viewportMatriix);
-		
+
 //Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
 
 		///
@@ -1724,22 +1773,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 //QuaternionScreenPrintf(0, y0 + 5 * kRowHeight, mul2, "Multiply(q2, q1)");
 //Novice::ScreenPrintf(0, y0 + 6 * kRowHeight, "%6.02f : Norm", norm);
 
-Vector3 axis = Normalize(Vector3{ 1.0f, 0.4f, -0.2f });
-float angle = 0.45f;
+//Vector3 axis = Normalize(Vector3{ 1.0f, 0.4f, -0.2f });
+//float angle = 0.45f;
+//
+//Quaternion rotation = MakeRotateAxisAngleQuaternion(axis, angle);
+//
+//Vector3 pointY = { 2.1f, -0.9f, 1.3f };
+//
+//Matrix4x4 rotateMatrix = MakeRotateMatrix(rotation);
+//
+//Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
+//Vector3 rotateByMatrix = Transform(pointY, rotateMatrix);
+//
+//QuaternionScreenPrintf(0, 0, rotation, "rotation");
+//MatrixScreenPrintf(0, kRowHeight * 1, rotateMatrix, "rotateMatrix");
+//VectorScreenPrintf(0, kRowHeight * 6, rotateByQuaternion, "rotateByQuaternion");
+//VectorScreenPrintf(0, kRowHeight * 7, rotateByMatrix, "rotateByMatrix");
+//
 
-Quaternion rotation = MakeRotateAxisAngleQuaternion(axis, angle);
+		Quaternion rotation0 = MakeRotateAxisAngleQuaternion({ 0.7f, 0.7f, 0.0f }, 0.3f);
+		Quaternion rotation1 = MakeRotateAxisAngleQuaternion({ 0.7f, 0.0f, 0.7f }, 3.141592f);
 
-Vector3 pointY = { 2.1f, -0.9f, 1.3f };
+		Quaternion i0 = Slerp(rotation0, rotation1, 0.0f);
+		Quaternion i1 = Slerp(rotation0, rotation1, 0.3f);
+		Quaternion i2 = Slerp(rotation0, rotation1, 0.5f);
+		Quaternion i3 = Slerp(rotation0, rotation1, 0.7f);
+		Quaternion i4 = Slerp(rotation0, rotation1, 1.0f);
 
-Matrix4x4 rotateMatrix = MakeRotateMatrix(rotation);
 
-Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
-Vector3 rotateByMatrix = Transform(pointY, rotateMatrix);
-
-QuaternionScreenPrintf(0, 0, rotation, "rotation");
-MatrixScreenPrintf(0, kRowHeight * 1, rotateMatrix, "rotateMatrix");
-VectorScreenPrintf(0, kRowHeight * 6, rotateByQuaternion, "rotateByQuaternion");
-VectorScreenPrintf(0, kRowHeight * 7, rotateByMatrix, "rotateByMatrix");
+		QuaternionScreenPrintf(0, 0 * kRowHeight, i0, "interpolate0 Slerp(q0,q1,0.0f)");
+		QuaternionScreenPrintf(0, 1 * kRowHeight, i1, "interpolate1 Slerp(q0,q1,0.3f)");
+		QuaternionScreenPrintf(0, 2 * kRowHeight, i2, "interpolate2 Slerp(q0,q1,0.5f)");
+		QuaternionScreenPrintf(0, 3 * kRowHeight, i3, "interpolate3 Slerp(q0,q1,0.7f)");
+		QuaternionScreenPrintf(0, 4 * kRowHeight, i4, "interpolate4 Slerp(q0,q1,1.0f)");
 
 
 		/// ↑描画処理ここまで
