@@ -1791,6 +1791,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 //VectorScreenPrintf(0, kRowHeight * 7, rotateByMatrix, "rotateByMatrix");
 //
 
+
+       //==============  
+	   //球面線形補完
+	   //==============
+
 		Quaternion rotation0 = MakeRotateAxisAngleQuaternion({ 0.7f, 0.7f, 0.0f }, 0.3f);
 		Quaternion rotation1 = MakeRotateAxisAngleQuaternion({ 0.7f, 0.0f, 0.7f }, 3.141592f);
 
@@ -1807,6 +1812,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		QuaternionScreenPrintf(0, 3 * kRowHeight, i3, "interpolate3 Slerp(q0,q1,0.7f)");
 		QuaternionScreenPrintf(0, 4 * kRowHeight, i4, "interpolate4 Slerp(q0,q1,1.0f)");
 
+	   //==============  
+	   //球面線形補完ここまで
+	   //==============
 
 		/// ↑描画処理ここまで
 		///
